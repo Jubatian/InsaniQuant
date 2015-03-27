@@ -1,6 +1,6 @@
 #!/bin/bash
 
-if [ "$#" -lt 2 ] || [ ! -f "$1" ]; then
+if [ "$#" -lt 2 ] || [ ! -d "$1" ]; then
     echo "Needs at least two parameters:"
     echo "- A directory to process png images within"
     echo "- A color count to quantize every image to (256 or less)"
