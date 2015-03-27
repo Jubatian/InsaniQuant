@@ -1,0 +1,4 @@
+# _obj_ directory if exists contains objects
+/_obj_
+# insaniquant is the output binary
+/insaniquant
