@@ -28,9 +28,9 @@
 
 
 /* Factors for counting in Hue, Saturation and Luma. Keep around 0x100. */
-#define HUE_DIFF 0x120U
-#define SAT_DIFF 0x050U
-#define LUM_DIFF 0x180U
+#define HUE_DIFF 0x100U
+#define SAT_DIFF 0x090U
+#define LUM_DIFF 0x1C0U
 
 
 
@@ -260,7 +260,6 @@ float coldiff_w(auint c0, auint p0, auint c1, auint p1, auint bsiz)
  ** simple weighting. Note that the result is only used in smaller / larger
  ** comparisons, so scaling is not important. */
 
- return (float)(cdf) * (float)(cdf) * (float)(cdf) * (float)(cdf) *
-        (1.0 + ((float)(cdf) * 0.5)) *
+ return (float)(cdf) * (float)(cdf) * (float)(cdf) * (float)(cdf) * (float)(cdf) *
         (float)(wgt);
 }

@@ -35,7 +35,7 @@
 
 /* Maximal color count for the quantizer. */
 
-#define FQUANT_COLS 4096U
+#define FQUANT_COLS 2048U
 
 
 /* The fast quantizer pass, reducing the occurrence weighted palette to the
