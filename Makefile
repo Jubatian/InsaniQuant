@@ -22,12 +22,15 @@ include Make_defines.mk
 CFLAGS+=
 
 OBJECTS= $(OBD)main.o
-OBJECTS+=$(OBD)colcount.o
 OBJECTS+=$(OBD)depthred.o
 OBJECTS+=$(OBD)coldiff.o
+OBJECTS+=$(OBD)coldepth.o
+OBJECTS+=$(OBD)colmerge.o
 OBJECTS+=$(OBD)iquant.o
 OBJECTS+=$(OBD)fquant.o
-OBJECTS+=$(OBD)dither.o
+OBJECTS+=$(OBD)palapp.o
+OBJECTS+=$(OBD)idata.o
+OBJECTS+=$(OBD)palgen.o
 
 
 all: $(OUT)
@@ -45,14 +48,17 @@ $(OBB):
 $(OBD)main.o: main.c *.h
 	$(CC) -c main.c -o $(OBD)main.o $(CFSIZ)
 
-$(OBD)colcount.o: colcount.c *.h
-	$(CC) -c colcount.c -o $(OBD)colcount.o $(CFSIZ)
-
 $(OBD)depthred.o: depthred.c *.h
 	$(CC) -c depthred.c -o $(OBD)depthred.o $(CFSIZ)
 
 $(OBD)coldiff.o: coldiff.c *.h
 	$(CC) -c coldiff.c -o $(OBD)coldiff.o $(CFSIZ)
+
+$(OBD)coldepth.o: coldepth.c *.h
+	$(CC) -c coldepth.c -o $(OBD)coldepth.o $(CFSIZ)
+
+$(OBD)colmerge.o: colmerge.c *.h
+	$(CC) -c colmerge.c -o $(OBD)colmerge.o $(CFSIZ)
 
 $(OBD)iquant.o: iquant.c *.h
 	$(CC) -c iquant.c -o $(OBD)iquant.o $(CFSIZ)
@@ -60,8 +66,14 @@ $(OBD)iquant.o: iquant.c *.h
 $(OBD)fquant.o: fquant.c *.h
 	$(CC) -c fquant.c -o $(OBD)fquant.o $(CFSIZ)
 
-$(OBD)dither.o: dither.c *.h
-	$(CC) -c dither.c -o $(OBD)dither.o $(CFSIZ)
+$(OBD)palapp.o: palapp.c *.h
+	$(CC) -c palapp.c -o $(OBD)palapp.o $(CFSIZ)
+
+$(OBD)idata.o: idata.c *.h
+	$(CC) -c idata.c -o $(OBD)idata.o $(CFSIZ)
+
+$(OBD)palgen.o: palgen.c *.h
+	$(CC) -c palgen.c -o $(OBD)palgen.o $(CFSIZ)
 
 
 .PHONY: all clean

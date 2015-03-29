@@ -1,10 +1,10 @@
 /**
 **  \file
-**  \brief     InsaniQuant simple pleasant ditherizer
+**  \brief     InsaniQuant palette apply
 **  \author    Sandor Zsuga (Jubatian)
 **  \copyright 2013 - 2015, GNU General Public License version 2 or any later
 **             version, see LICENSE
-**  \date      2015.03.27
+**  \date      2015.03.29
 **
 **
 ** This program is free software: you can redistribute it and/or modify
@@ -21,19 +21,23 @@
 ** along with this program.  If not, see <http://www.gnu.org/licenses/>.
 **
 **
-** A simple ditherizer only considering neighboring pixels.
+** Applies palette to the image either with ditherizing or flat.
 */
 
 
-#ifndef DITHER_H
-#define DITHER_H
+#ifndef PALAPP_H
+#define PALAPP_H
 
 #include "types.h"
 
 
 
-/* Ditherizes the image in buf, for a palette obtained from wrk. */
-void dither(uint8 const* buf, uint8* wrk, auint wd, auint hg);
+/* Ditherizes the image in buf, into wrk. */
+void palapp_dither(uint8 const* buf, uint8* wrk, auint wd, auint hg, iquant_pal_t const* pal);
+
+
+/* Applies the passed palette on the image flat */
+void palapp_flat(uint8 const* buf, uint8* wrk, auint wd, auint hg, iquant_pal_t const* pal);
 
 
 #endif

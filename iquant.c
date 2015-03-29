@@ -4,7 +4,7 @@
 **  \author    Sandor Zsuga (Jubatian)
 **  \copyright 2013 - 2015, GNU General Public License version 2 or any later
 **             version, see LICENSE
-**  \date      2015.03.27
+**  \date      2015.03.29
 **
 **
 ** This program is free software: you can redistribute it and/or modify
@@ -24,20 +24,10 @@
 
 #include "iquant.h"
 #include "coldiff.h"
-#include "depthred.h"
+#include "coldepth.h"
 #include "fquant.h"
 
 
-
-/* Structure for one color */
-typedef struct{
- auint col;       /* RGB color value */
- auint occ;       /* Occurrence */
- auint bid;       /* Bucket ID the color is sitting in */
-}iquant_col_t;
-
-/* All of the colors on the image */
-static iquant_col_t iquant_col[IQUANT_COLS];
 
 /* Average colors (going in the palette) for every bucket */
 static auint iquant_bcl[IQUANT_COLS];
@@ -45,20 +35,14 @@ static auint iquant_bcl[IQUANT_COLS];
 /* Occupation data for every bucket, for weighting */
 static auint iquant_boc[IQUANT_COLS];
 
-
-
-/* Retrieves an RGB color from the image */
-static auint iquant_iget(uint8 const* buf, auint px)
-{
- return (buf[(px * 3U) + 0U] << 16) |
-        (buf[(px * 3U) + 1U] <<  8) |
-        (buf[(px * 3U) + 2U]      );
-}
+/* Large floating point number to start search at...
+** Need to replace to something better. */
+#define FLT_LARGE (1.0e30)
 
 
 
 /* Calculates average colors (palette) for the buckets */
-static void iquant_cpal(auint ccnt, auint pdep)
+static void iquant_cpal(iquant_pal_t* pal, auint pdep)
 {
  auint i;
  auint j;
@@ -67,7 +51,7 @@ static void iquant_cpal(auint ccnt, auint pdep)
  auint b;
  auint c;
 
- for (i = 0U; i < ccnt; i++){ /* For every bucket */
+ for (i = 0U; i < (pal->cct); i++){ /* For every bucket */
 
   if (iquant_boc[i] != 0U){ /* Only unless it was emptied earlier */
 
@@ -75,12 +59,12 @@ static void iquant_cpal(auint ccnt, auint pdep)
    g = 0U;
    b = 0U;
    c = 0U;
-   for (j = 0U; j < ccnt; j++){ /* For every color in the bucket 'i' */
-    if (iquant_col[j].bid == i){
-     r += ((iquant_col[j].col >> 16) & 0xFFU) * iquant_col[j].occ;
-     g += ((iquant_col[j].col >>  8) & 0xFFU) * iquant_col[j].occ;
-     b += ((iquant_col[j].col      ) & 0xFFU) * iquant_col[j].occ;
-     c += iquant_col[j].occ;
+   for (j = 0U; j < (pal->cct); j++){ /* For every color in the bucket 'i' */
+    if (pal->col[j].wrk == i){
+     r += ((pal->col[j].col >> 16) & 0xFFU) * pal->col[j].occ;
+     g += ((pal->col[j].col >>  8) & 0xFFU) * pal->col[j].occ;
+     b += ((pal->col[j].col      ) & 0xFFU) * pal->col[j].occ;
+     c += pal->col[j].occ;
     }
    }
    if (c != 0U){ /* (The mask with 0xFF shouldn't be necessary) */
@@ -88,7 +72,7 @@ static void iquant_cpal(auint ccnt, auint pdep)
     g = ((g + (c >> 1)) / c) & 0xFFU;
     b = ((b + (c >> 1)) / c) & 0xFFU;
    }
-   iquant_bcl[i] = depthred_col((r << 16) | (g << 8) | (b), pdep);
+   iquant_bcl[i] = coldepth((r << 16) | (g << 8) | (b), pdep);
    iquant_boc[i] = c;
 
   }
@@ -98,53 +82,37 @@ static void iquant_cpal(auint ccnt, auint pdep)
 
 
 
-/* The main quantizer pass, reducing the image to the given count of colors.
-** It calls the fast quantizer first as needed to trim down color count to an
-** amount it is capable to work with. The cols parameter is it's output target
-** (as quantized image). The pdep parameter can be used to force a bit depth
+/* The main quantizer pass, reducing the occurrence weighted palette to the
+** given count of colors. The pdep parameter can be used to force a bit depth
 ** on the palette it generates (1 - 8 bits). */
-void iquant(uint8 const* buf, uint8* wrk, auint bsiz, auint cols, auint pdep)
+void iquant(iquant_pal_t* pal, auint cols, auint pdep)
 {
- auint ccnt = 0U;
  auint bcnt;
  auint bmid;
  auint bmi2;
- auint bmvl;
+ float bmvl;
  auint bxid;
- auint bxvl;
+ float bxvl;
+ float ft;
  auint otid;
  auint otvl;
  auint i;
  auint j;
  auint k;
- auint c0;
 
- /* Reduction to get a suitable amount of colors */
+ /* Check if palette can be used */
 
- fquant(buf, wrk, bsiz, IQUANT_COLS);
+ if ((pal->cct) > IQUANT_COLS){
+  printf("IQuant: Color count exceed (%u > %u)! Aborting.\n", pal->cct, IQUANT_COLS);
+  return;
+ }
 
- /* Collect the colors from the image with their occurrences */
+ /* Initialize work data: bucket assingments, and initial bucket occurrences
+ ** (the latter just to nonzero to indicate they are valid) */
 
- printf("IQuant: Gathering color data\n");
-
- for (i = 0U; i < bsiz; i++){ /* Collect */
-  c0 = iquant_iget(wrk, i);
-  for (j = 0U; j < ccnt; j++){
-   if (c0 == iquant_col[j].col){ /* Already collected color */
-    iquant_col[j].occ++;
-    break;
-   }
-  }
-  if ((j == ccnt) && (j != IQUANT_COLS)){ /* One more color */
-   iquant_col[j].col = c0;
-   iquant_col[j].occ = 1U;
-   iquant_col[j].bid = j; /* Every color initially drops into own bucket */
-   iquant_boc[j] = 1U;    /* Also set bucket occupation, so empty buckets can be skipped later */
-   ccnt++;
-  }else if (j == IQUANT_COLS){
-   printf("IQuant: Color count exceed at position %u! Aborting.\n", i);
-   return;
-  }
+ for (i = 0U; i < (pal->cct); i++){
+  pal->col[i].wrk = i; /* Every color initially goes into own bucket */
+  iquant_boc[i] = 1U;  /* Bucket valid */
  }
 
  /* Quantization pass: dismantle one color bucket in each iteration by the
@@ -154,36 +122,36 @@ void iquant(uint8 const* buf, uint8* wrk, auint bsiz, auint cols, auint pdep)
 
  printf("IQuant: Reducing color count to %u colors\n", cols);
 
- bcnt = ccnt;
+ bcnt = pal->cct;
 
  while (bcnt > cols){
 
   /* Calculate the bucket averages and occupation */
 
-  iquant_cpal(ccnt, pdep);
+  iquant_cpal(pal, pdep);
 
   /* Search for a bucket to dismantle */
 
   bmid = 0U;
   bmi2 = 0U;
-  bmvl = 0xFFFFFFFFU;
+  bmvl = FLT_LARGE;
 
-  for (i = 0U; i < ccnt; i++){ /* Go through all buckets */
+  for (i = 0U; i < (pal->cct); i++){ /* Go through all buckets */
    if (iquant_boc[i] != 0U){ /* Only if the bucket is still valid (contains colors) */
 
     /* Search the other buckets for smallest difference, weighted with
     ** occupation */
 
     bxid = 0U;
-    bxvl = 0xFFFFFFFFU;
+    bxvl = FLT_LARGE;
 
-    for (j = i + 1U; j < ccnt; j++){
+    for (j = i + 1U; j < (pal->cct); j++){
      if (iquant_boc[j] != 0U){ /* Valid */
 
-      c0 = coldiff_w(iquant_bcl[j], iquant_boc[j],
-                     iquant_bcl[i], iquant_boc[j], bsiz);
-      if (c0 < bxvl){
-       bxvl = c0;
+      ft = coldiff_w(iquant_bcl[j], iquant_boc[j],
+                     iquant_bcl[i], iquant_boc[j], pal->ocs);
+      if (ft < bxvl){
+       bxvl = ft;
        bxid = j;
       }
 
@@ -209,21 +177,21 @@ void iquant(uint8 const* buf, uint8* wrk, auint bsiz, auint cols, auint pdep)
 
   iquant_boc[bmid] = 0U; /* Invalidate bucket to dismantle by zeroing occupation */
 
-  for (i = 0U; i < ccnt; i++){
-   if (iquant_col[i].bid == bmid){ /* A color needing a new bucket */
+  for (i = 0U; i < (pal->cct); i++){
+   if (pal->col[i].wrk == bmid){ /* A color needing a new bucket */
 
     otid = 0U;
     otvl = 0xFFFFFFFFU;
-    for (j = 0U; j < ccnt; j++){
+    for (j = 0U; j < (pal->cct); j++){
      if (iquant_boc[j] != 0U){ /* Bucket is non-empty (and neither the one under dismantling) */
-      k = coldiff(iquant_bcl[j], iquant_col[i].col);
+      k = coldiff(iquant_bcl[j], pal->col[i].col);
       if (k < otvl){ /* Difference is smaller, more likely to go here */
        otid = j;
        otvl = k;
       }
      }
     }
-    iquant_col[i].bid = otid; /* Reassign color to the other bucket */
+    pal->col[i].wrk = otid; /* Reassign color to the other bucket */
 
    }
   }
@@ -239,13 +207,13 @@ void iquant(uint8 const* buf, uint8* wrk, auint bsiz, auint cols, auint pdep)
  printf("\n");
 
  /* Now the bucket count is reduced to the desired color count. Create a
- ** palette from it, so the image may be processed. */
+ ** proper palette from it. */
 
  printf("IQuant: Assembling palette of %u colors\n", bcnt);
 
- iquant_cpal(ccnt, pdep); /* Just the final bucket averaging: the palette. */
+ iquant_cpal(pal, pdep); /* Just the final bucket averaging: the palette. */
  j = 0U;
- for (i = 0U; i < ccnt; i++){ /* Compact palette */
+ for (i = 0U; i < (pal->cct); i++){ /* Compact palette */
 
   /* Note that if depth reduction is present, the palette may contain
   ** identical colors. Also remove those for proper palette report and
@@ -254,41 +222,16 @@ void iquant(uint8 const* buf, uint8* wrk, auint bsiz, auint cols, auint pdep)
 
   if (iquant_boc[i] != 0U){ /* Bucket valid */
    for (k = 0U; k < j; k++){
-    if (iquant_bcl[i] == iquant_bcl[k]){ break; }
+    if (pal->col[i].col == iquant_bcl[k]){ break; }
    }
    if (k == j){ /* No previous occurrence */
-    iquant_bcl[j] = iquant_bcl[i];
+    pal->col[j].col = iquant_bcl[i];
+    pal->col[j].occ = iquant_boc[i];
     printf("Color %3u: 0x%06X (pixels: %u)\n", j, iquant_bcl[i], iquant_boc[i]);
     j ++;
    }
   }
  }
- bcnt = j; /* Update to true palette size */
-
- /* Palette OK, quantize the image with it */
-
- printf("IQuant: Quantizing the image (%u colors)\n", bcnt);
-
- c0 = 0x80000000U;
- bmid = 0U;
- for (i = 0U; i < bsiz; i++){
-  k = iquant_iget(buf, i);
-  if (c0 != k){ /* Be faster for identical colors */
-   c0   = k;
-   bmid = 0U;
-   bmvl = 0xFFFFFFFFU;
-   for (j = 0U; j < bcnt; j++){ /* Get least differing color from palette */
-    k = coldiff(iquant_bcl[j], c0);
-    if (k < bmvl){
-     bmvl = k;
-     bmid = j;
-    }
-   }
-  }
-  k = iquant_bcl[bmid];
-  wrk[(i * 3U) + 0U] = (k >> 16) & 0xFFU;
-  wrk[(i * 3U) + 1U] = (k >>  8) & 0xFFU;
-  wrk[(i * 3U) + 2U] = (k      ) & 0xFFU;
- }
+ pal->cct = j; /* Update to true palette size */
 
 }

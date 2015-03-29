@@ -4,7 +4,7 @@
 **  \author    Sandor Zsuga (Jubatian)
 **  \copyright 2013 - 2015, GNU General Public License version 2 or any later
 **             version, see LICENSE
-**  \date      2015.03.27
+**  \date      2015.03.29
 **
 **
 ** This program is free software: you can redistribute it and/or modify
@@ -36,17 +36,11 @@
 
 
 /* Reduces bit depth of the passed image by trimming low bits. The bsiz
-** parameter is the RGB image buffer's size in pixels, wrk is the work image
-** buffer (to which the reduction takes place). The clipped low bits are not
-** populated with zero, rather scaled to let them cover the entire original
-** color range (if clipped, the image would slightly darken as a result of the
-** quantization which is not desirable). */
-void depthred(uint8 const* buf, uint8* wrk, auint bsiz, auint cmax);
-
-/* Trims the passed input color down to the given depth. Note that it does not
-** just trims the lowest bits, rather expands so the resulting color space
-** still covers the entire 0 - 255 range. Depth can range from 1 - 8. */
-auint depthred_col(auint col, auint dep);
+** parameter is the RGB image buffer's size in pixels. The clipped low bits
+** are not populated with zero, rather scaled to let them cover the entire
+** original color range (if clipped, the image would slightly darken as a
+** result of the quantization which is not desirable). */
+void depthred(uint8 const* buf, auint bsiz, iquant_pal_t* pal, auint cols);
 
 
 #endif

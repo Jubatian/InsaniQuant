@@ -1,6 +1,6 @@
 /**
 **  \file
-**  \brief     The version string for the program
+**  \brief     InsaniQuant bit depth reduction pass
 **  \author    Sandor Zsuga (Jubatian)
 **  \copyright 2013 - 2015, GNU General Public License version 2 or any later
 **             version, see LICENSE
@@ -22,4 +22,16 @@
 */
 
 
-#define IQUANT_VERSION "0.1.0"
+#ifndef COLDEPTH_H
+#define COLDEPTH_H
+
+#include "types.h"
+
+
+/* Trims the passed input color down to the given depth. Note that it does not
+** just trims the lowest bits, rather expands so the resulting color space
+** still covers the entire 0 - 255 range. Depth can range from 1 - 8. */
+auint coldepth(auint col, auint dep);
+
+
+#endif

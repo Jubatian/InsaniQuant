@@ -29,8 +29,10 @@
 
 #include "types.h"
 #include "version.h"
+#include "depthred.h"
+#include "fquant.h"
 #include "iquant.h"
-#include "dither.h"
+#include "palapp.h"
 
 
 
@@ -70,8 +72,10 @@ int main(int argc, char** argv)
  auint par_c;
  auint par_b;
  auint par_d;
+ void* tptr;
  uint8* img_buf;
  uint8* img_wrk;
+ iquant_pal_t pal;
  size_t s_tmp;
 
  /* Welcome message */
@@ -149,16 +153,21 @@ int main(int argc, char** argv)
   exit(1);
  }
 
- /* Attempt to allocate image buffer, and load the input file in it */
+ /* Attempt to allocate buffers, and load the input file in it. */
 
- img_buf = malloc(par_w * par_h * 6U);
- if (img_buf == NULL){
+ tptr = malloc( (par_w * par_h * 3U) +
+                (par_w * par_h * 3U) +
+                (sizeof(iquant_col_t) * FQUANT_COLS) );
+ if (tptr == NULL){
   fprintf(stderr, "Couldn't allocate memory for image (%u bytes)\n", par_w * par_h * 3U);
   fclose(f_inp);
   fclose(f_out);
   exit(1);
  }
- img_wrk = img_buf + (par_w * par_h * 3U);
+ img_buf = (void*)(((uint8*)(tptr)));
+ img_wrk = (void*)(((uint8*)(tptr)) + (par_w * par_h * 3U));
+ pal.col = (void*)(((uint8*)(tptr)) + (par_w * par_h * 3U) + (par_w * par_h * 3U));
+ pal.mct = FQUANT_COLS;
 
  s_tmp = fread(img_buf, 1, par_w * par_h * 3U, f_inp); /* Note: fits in 32 bit unsigned int due to size limits */
  if ((par_w * par_h * 3U) != (auint)(s_tmp)){
@@ -179,8 +188,14 @@ int main(int argc, char** argv)
  printf("- Dithering request ...: %u\n", par_d);
  printf("\n");
 
- iquant(img_buf, img_wrk, par_w * par_h, par_c, par_b);
- if (par_d){ dither(img_buf, img_wrk, par_w, par_h); }
+ depthred(img_buf, par_w * par_h, &pal, FQUANT_COLS);
+ fquant(&pal, IQUANT_COLS);
+ iquant(&pal, par_c, par_b);
+ if (par_d){
+  palapp_dither(img_buf, img_wrk, par_w, par_h, &pal);
+ }else{
+  palapp_flat  (img_buf, img_wrk, par_w, par_h, &pal);
+ }
 
  /* Write back, clean up and exit */
 

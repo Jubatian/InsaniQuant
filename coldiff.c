@@ -4,7 +4,7 @@
 **  \author    Sandor Zsuga (Jubatian)
 **  \copyright 2013 - 2015, GNU General Public License version 2 or any later
 **             version, see LICENSE
-**  \date      2015.03.27
+**  \date      2015.03.29
 **
 **
 ** This program is free software: you can redistribute it and/or modify
@@ -205,6 +205,10 @@ auint coldiff(auint c0, auint c1)
  auint r;
  auint t;
 
+ /* Shortcut when comparing identical colors */
+
+ if (((c0 ^ c1) & 0xFFFFFFU) == 0U){ return 0U; }
+
  /* Hue / Saturation difference */
 
  coldiff_huesat(c0, &h0, &s0);
@@ -242,30 +246,21 @@ auint coldiff(auint c0, auint c1)
 
 /* Weighted color difference calculation: uses the occurrence data relative
 ** to the image total size to weight difference (covering larger area makes
-** differences larger). Returns in the entire 2^32 range. */
-auint coldiff_w(auint c0, auint p0, auint c1, auint p1, auint bsiz)
+** differences larger). */
+float coldiff_w(auint c0, auint p0, auint c1, auint p1, auint bsiz)
 {
  auint cdf = coldiff(c0, c1);
  auint wgt = p0 + p1;
- static auint shf = 0x80U;
 
- /* Calculate weight downshift, this is to prevent 32 bit overflow for large
- ** images */
+ /* Some explanations on this part:
+ ** Two important characteristics of the quantized image battle here: the
+ ** preservation of smaller distinctly colored areas, and the faithful
+ ** reproduction of relatively large areas, especially gradients. For the
+ ** former, the color difference raised to a power works. The latter is
+ ** simple weighting. Note that the result is only used in smaller / larger
+ ** comparisons, so scaling is not important. */
 
- if ((shf & 0x80U) != 0U){
-  if      (bsiz >= 0x8000000U){ shf = 12U; }
-  else if (bsiz >= 0x800000U) { shf =  8U; }
-  else if (bsiz >= 0x80000U)  { shf =  4U; }
-  else                        { shf =  0U; }
- }
-
- /* The occurrence weight transformation has two major parameters: One is the
- ** offset, which determines how well the algorithm preserves small,
- ** distinctly colored details (an offset of zero would cause erasing those
- ** favoring the larger areas), the other is the steepness, that is, how
- ** pronounced is the occupation difference in determining the difference
- ** between colors. These two parameters just occur here as shifts, the offset
- ** enforced being relative to the image size (bsiz) */
-
- return cdf * (((wgt >> 2) + (bsiz >> 6)) >> shf);
+ return (float)(cdf) * (float)(cdf) * (float)(cdf) * (float)(cdf) *
+        (1.0 + ((float)(cdf) * 0.5)) *
+        (float)(wgt);
 }

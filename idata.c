@@ -1,6 +1,6 @@
 /**
 **  \file
-**  \brief     The version string for the program
+**  \brief     InsaniQuant image data tools
 **  \author    Sandor Zsuga (Jubatian)
 **  \copyright 2013 - 2015, GNU General Public License version 2 or any later
 **             version, see LICENSE
@@ -22,4 +22,25 @@
 */
 
 
-#define IQUANT_VERSION "0.1.0"
+#include "idata.h"
+
+
+
+/* Retrieves color value at a given pixel index (linear) from the image
+** buffer. */
+auint idata_get(uint8 const* buf, auint i)
+{
+ return (buf[(i * 3U) + 0U] << 16) |
+        (buf[(i * 3U) + 1U] <<  8) |
+        (buf[(i * 3U) + 2U]      );
+}
+
+
+/* Sets a color value at a given pixel index (linear) into the image
+** buffer. */
+void idata_set(uint8* buf, auint i, auint col)
+{
+ buf[(i * 3U) + 0U] = (col >> 16) & 0xFFU;
+ buf[(i * 3U) + 1U] = (col >>  8) & 0xFFU;
+ buf[(i * 3U) + 2U] = (col      ) & 0xFFU;
+}

@@ -1,10 +1,10 @@
 /**
 **  \file
-**  \brief     InsaniQuant color counter
+**  \brief     InsaniQuant image data tools
 **  \author    Sandor Zsuga (Jubatian)
 **  \copyright 2013 - 2015, GNU General Public License version 2 or any later
 **             version, see LICENSE
-**  \date      2015.03.27
+**  \date      2015.03.29
 **
 **
 ** This program is free software: you can redistribute it and/or modify
@@ -19,22 +19,24 @@
 **
 ** You should have received a copy of the GNU General Public License
 ** along with this program.  If not, see <http://www.gnu.org/licenses/>.
-**
-**
-** Counts colors occurring in the image & generates palette.
 */
 
 
-#ifndef COLCOUNT_H
-#define COLCOUNT_H
+#ifndef IDATA_H
+#define IDATA_H
 
 #include "types.h"
 
 
 
-/* Counts colors in the passed RGB image buffer. The size is specified as
-** pixel count (one third of buffer size in bytes). */
-auint colcount(uint8 const* buf, auint bsiz);
+/* Retrieves color value at a given pixel index (linear) from the image
+** buffer. */
+auint idata_get(uint8 const* buf, auint i);
+
+
+/* Sets a color value at a given pixel index (linear) into the image
+** buffer. */
+void idata_set(uint8* buf, auint i, auint col);
 
 
 #endif

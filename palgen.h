@@ -1,6 +1,6 @@
 /**
 **  \file
-**  \brief     The version string for the program
+**  \brief     InsaniQuant palette from image routine
 **  \author    Sandor Zsuga (Jubatian)
 **  \copyright 2013 - 2015, GNU General Public License version 2 or any later
 **             version, see LICENSE
@@ -22,4 +22,18 @@
 */
 
 
-#define IQUANT_VERSION "0.1.0"
+#ifndef PALGEN_H
+#define PALGEN_H
+
+#include "types.h"
+
+
+
+/* Generates palette from the passed image data with occurrence data,
+** targeting a given depth. Uses the mct member to limit color count.
+** Returns nonzero if successful, zero otherwise (image has more colors than
+** fitting in the palette). */
+auint palgen(uint8 const* buf, auint bsiz, iquant_pal_t* pal, auint depth);
+
+
+#endif

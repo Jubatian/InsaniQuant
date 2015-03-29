@@ -4,7 +4,7 @@
 **  \author    Sandor Zsuga (Jubatian)
 **  \copyright 2013 - 2015, GNU General Public License version 2 or any later
 **             version, see LICENSE
-**  \date      2015.03.27
+**  \date      2015.03.29
 **
 **
 ** This program is free software: you can redistribute it and/or modify
@@ -33,9 +33,8 @@
 auint coldiff(auint c0, auint c1);
 
 /* Weighted color difference calculation: uses the occurrence data relative
-** to the image total size to weight difference (covering larger area makes
-** differences larger). Returns in the entire 2^32 range. */
-auint coldiff_w(auint c0, auint p0, auint c1, auint p1, auint bsiz);
+** to the image total size to weight difference */
+float coldiff_w(auint c0, auint p0, auint c1, auint p1, auint bsiz);
 
 
 #endif

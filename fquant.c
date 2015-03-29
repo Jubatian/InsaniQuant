@@ -4,7 +4,7 @@
 **  \author    Sandor Zsuga (Jubatian)
 **  \copyright 2013 - 2015, GNU General Public License version 2 or any later
 **             version, see LICENSE
-**  \date      2015.03.27
+**  \date      2015.03.29
 **
 **
 ** This program is free software: you can redistribute it and/or modify
@@ -24,79 +24,40 @@
 
 #include "fquant.h"
 #include "coldiff.h"
+#include "colmerge.h"
 #include "depthred.h"
 
 
 
-/* Structure for one color */
-typedef struct{
- auint col;       /* RGB color value */
- auint occ;       /* Occurrence */
-}fquant_col_t;
-
-/* All of the colors on the image */
-static fquant_col_t fquant_col[FQUANT_COLS];
-
 /* All of the weighted differences between colors */
-static auint fquant_dif[FQUANT_COLS * FQUANT_COLS];
+static float fquant_dif[FQUANT_COLS * FQUANT_COLS];
+
+/* Large floating point number to start search at...
+** Need to replace to something better. */
+#define FLT_LARGE (1.0e30)
 
 
 
-/* Retrieves an RGB color from the image */
-static auint fquant_iget(uint8 const* buf, auint px)
+/* The fast quantizer pass, reducing the occurrence weighted palette to the
+** given count of colors. The cols parameter is it's output target. */
+void fquant(iquant_pal_t* pal, auint cols)
 {
- return (buf[(px * 3U) + 0U] << 16) |
-        (buf[(px * 3U) + 1U] <<  8) |
-        (buf[(px * 3U) + 2U]      );
-}
-
-
-
-/* The fast quantizer pass, reducing the image to the given count of colors.
-** It calls the depth reductor first as needed to trim down color count to an
-** amount it is capable to work with. The cols parameter is it's output target
-** (as quantized image). */
-void fquant(uint8 const* buf, uint8* wrk, auint bsiz, auint cols)
-{
- auint ccnt = 0U;
  auint bcnt;
  auint clid;
  auint cli2;
- auint clvl;
+ float clvl;
  auint cxid;
- auint cxvl;
+ float cxvl;
+ float ft;
  auint i;
  auint j;
  auint k;
- auint r;
- auint g;
- auint b;
- auint c0;
 
- /* Depth reduction to get a suitable amount of colors */
+ /* Check if palette can be used */
 
- depthred(buf, wrk, bsiz, FQUANT_COLS);
-
- /* Collect the colors from the image with their occurrences */
-
- printf("FQuant: Gathering color data\n");
-
- for (i = 0U; i < bsiz; i++){ /* Collect */
-  c0 = fquant_iget(wrk, i);
-  for (j = 0U; j < ccnt; j++){
-   if (c0 == fquant_col[j].col){ /* Already collected color */
-    fquant_col[j].occ++;
-    break;
-   }
-  }
-  if ((j == ccnt) && (j != FQUANT_COLS)){ /* One more color */
-   fquant_col[j].col = c0;
-   fquant_col[j].occ = 1U;
-   ccnt++;
-  }else if (j == FQUANT_COLS){
-   printf("FQuant: Color count exceed at position %u! Aborting.\n", i);
-   return;
-  }
+ if ((pal->cct) > FQUANT_COLS){
+  printf("FQuant: Color count exceed (%u > %u)! Aborting.\n", pal->cct, FQUANT_COLS);
+  return;
  }
 
  /* Quantization pass: Merge the two least occuring colors in every pass.
@@ -107,15 +68,15 @@ void fquant(uint8 const* buf, uint8* wrk, auint bsiz, auint cols)
 
  /* Pre-calculate the color difference matrix */
 
- for (i = 0U; i < ccnt; i++){
+ for (i = 0U; i < (pal->cct); i++){
   k = i * FQUANT_COLS;
-  for (j = i + 1U; j < ccnt; j++){
-   fquant_dif[k + j] = coldiff_w(fquant_col[j].col, fquant_col[j].occ,
-                                 fquant_col[i].col, fquant_col[i].occ, bsiz);
+  for (j = i + 1U; j < (pal->cct); j++){
+   fquant_dif[k + j] = coldiff_w(pal->col[j].col, pal->col[j].occ,
+                                 pal->col[i].col, pal->col[i].occ, pal->ocs);
   }
  }
 
- bcnt = ccnt;
+ bcnt = pal->cct;
 
  while (bcnt > cols){
 
@@ -123,23 +84,23 @@ void fquant(uint8 const* buf, uint8* wrk, auint bsiz, auint cols)
 
   clid = 0U;
   cli2 = 0U;
-  clvl = 0xFFFFFFFFU;
+  clvl = FLT_LARGE;
 
-  for (i = 0U; i < ccnt; i++){ /* Go through all colors */
-   if (fquant_col[i].occ != 0U){ /* Only if the color is still valid (exists) */
+  for (i = 0U; i < (pal->cct); i++){ /* Go through all colors */
+   if ((pal->col[i].occ) != 0U){ /* Only if the color is still valid (exists) */
 
     /* Search the other colors for smallest difference, weighted with
     ** occupation */
 
     k    = i * FQUANT_COLS;
     cxid = 0U;
-    cxvl = 0xFFFFFFFFU;
+    cxvl = FLT_LARGE;
 
-    for (j = i + 1U; j < ccnt; j++){
+    for (j = i + 1U; j < (pal->cct); j++){
 
-     c0 = fquant_dif[k + j];
-     if (c0 < cxvl){
-      cxvl = c0;
+     ft = fquant_dif[k + j];
+     if (ft < cxvl){
+      cxvl = ft;
       cxid = j;
      }
 
@@ -155,52 +116,39 @@ void fquant(uint8 const* buf, uint8* wrk, auint bsiz, auint cols)
   }
 
   /* The colors to merge are now identified in clid and cli2. Average them
-  ** weighted with their occupation. */
+  ** weighted with their occupation (into clid, cli2 invalidated). */
 
-  r   = ((fquant_col[clid].col >> 16) & 0xFFU) * fquant_col[clid].occ;
-  g   = ((fquant_col[clid].col >>  8) & 0xFFU) * fquant_col[clid].occ;
-  b   = ((fquant_col[clid].col      ) & 0xFFU) * fquant_col[clid].occ;
-  c0  = fquant_col[clid].occ;
-  r  += ((fquant_col[cli2].col >> 16) & 0xFFU) * fquant_col[cli2].occ;
-  g  += ((fquant_col[cli2].col >>  8) & 0xFFU) * fquant_col[cli2].occ;
-  b  += ((fquant_col[cli2].col      ) & 0xFFU) * fquant_col[cli2].occ;
-  c0 += fquant_col[cli2].occ;
-  r   = ((r + (c0 >> 1)) / c0) & 0xFFU;
-  g   = ((g + (c0 >> 1)) / c0) & 0xFFU;
-  b   = ((b + (c0 >> 1)) / c0) & 0xFFU;
-  fquant_col[clid].col = (r << 16) | (g << 8) | (b);
-  fquant_col[clid].occ = c0;
-  fquant_col[cli2].occ = 0U; /* Invalidate the other color */
+  colmerge(pal, clid, cli2);
 
   /* Update difference matrix for the new color */
 
   k = clid * FQUANT_COLS;
-  for (j = clid + 1U; j < ccnt; j++){
-   if (fquant_col[j].occ != 0U){ /* Valid color */
-    fquant_dif[k + j] = coldiff_w(fquant_col[   j].col, fquant_col[   j].occ,
-                                  fquant_col[clid].col, fquant_col[clid].occ, bsiz);
-   }else{                        /* Invalid color: disable selecting it */
-    fquant_dif[k + j] = 0xFFFFFFFFU;
+  for (j = clid + 1U; j < (pal->cct); j++){
+   if (pal->col[j].occ != 0U){ /* Valid color */
+    fquant_dif[k + j] = coldiff_w(pal->col[   j].col, pal->col[   j].occ,
+                                  pal->col[clid].col, pal->col[clid].occ, pal->ocs);
+   }else{                      /* Invalid color: disable selecting it */
+    fquant_dif[k + j] = FLT_LARGE;
    }
   }
   for (i = 0U; i < clid; i++){
-   if (fquant_col[i].occ != 0U){ /* Valid color */
+   if (pal->col[i].occ != 0U){ /* Valid color */
     fquant_dif[(i * FQUANT_COLS) + clid] =
-                        coldiff_w(fquant_col[clid].col, fquant_col[clid].occ,
-                                  fquant_col[   i].col, fquant_col[   i].occ, bsiz);
-   }else{                        /* Invalid color: disable selecting it */
-    fquant_dif[(i * FQUANT_COLS) + clid] = 0xFFFFFFFFU;
+                        coldiff_w(pal->col[clid].col, pal->col[clid].occ,
+                                  pal->col[   i].col, pal->col[   i].occ, pal->ocs);
+   }else{                      /* Invalid color: disable selecting it */
+    fquant_dif[(i * FQUANT_COLS) + clid] = FLT_LARGE;
    }
   }
 
   /* Disable the discarded color in the difference matrix */
 
   k = cli2 * FQUANT_COLS;
-  for (j = clid + 1U; j < ccnt; j++){
-   fquant_dif[k + j] = 0xFFFFFFFFU;
+  for (j = clid + 1U; j < (pal->cct); j++){
+   fquant_dif[k + j] = FLT_LARGE;
   }
   for (i = 0U; i < cli2; i++){
-   fquant_dif[(i * FQUANT_COLS) + cli2] = 0xFFFFFFFFU;
+   fquant_dif[(i * FQUANT_COLS) + cli2] = FLT_LARGE;
   }
 
   /* OK, one color less to go! */
@@ -213,43 +161,18 @@ void fquant(uint8 const* buf, uint8* wrk, auint bsiz, auint cols)
 
  printf("\n");
 
- /* Now the bucket count is reduced to the desired color count. Create a
- ** palette from it, so the image may be processed. */
+ /* Now the color count is reduced to the desired color count. Create a proper
+ ** palette from it. */
 
  printf("FQuant: Assembling palette of %u colors\n", bcnt);
 
  j = 0U;
- for (i = 0U; i < ccnt; i++){ /* Compact palette */
-  if (fquant_col[i].occ != 0U){
-   fquant_col[j].col = fquant_col[i].col;
+ for (i = 0U; i < (pal->cct); i++){ /* Compact palette */
+  if (pal->col[i].occ != 0U){
+   pal->col[j].col = pal->col[i].col;
+   pal->col[j].occ = pal->col[i].occ;
    j ++;
   }
  }
-
- /* Palette OK, quantize the image with it */
-
- printf("FQuant: Quantizing the image (%u colors)\n", bcnt);
-
- c0 = 0x80000000U;
- clid = 0U;
- for (i = 0U; i < bsiz; i++){
-  k = fquant_iget(buf, i);
-  if (c0 != k){ /* Be faster for identical colors */
-   c0   = k;
-   clid = 0U;
-   clvl = 0xFFFFFFFFU;
-   for (j = 0U; j < bcnt; j++){ /* Get least differing color from palette */
-    k = coldiff(fquant_col[j].col, c0);
-    if (k < clvl){
-     clvl = k;
-     clid = j;
-    }
-   }
-  }
-  k = fquant_col[clid].col;
-  wrk[(i * 3U) + 0U] = (k >> 16) & 0xFFU;
-  wrk[(i * 3U) + 1U] = (k >>  8) & 0xFFU;
-  wrk[(i * 3U) + 2U] = (k      ) & 0xFFU;
- }
-
+ pal->cct = j;
 }

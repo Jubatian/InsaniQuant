@@ -4,7 +4,7 @@
 **  \author    Sandor Zsuga (Jubatian)
 **  \copyright 2013 - 2015, GNU General Public License version 2 or any later
 **             version, see LICENSE
-**  \date      2015.03.27
+**  \date      2015.03.29
 **
 **
 ** This program is free software: you can redistribute it and/or modify
@@ -38,11 +38,9 @@
 #define FQUANT_COLS 4096U
 
 
-/* The fast quantizer pass, reducing the image to the given count of colors.
-** It calls the depth reductor first as needed to trim down color count to an
-** amount it is capable to work with. The cols parameter is it's output target
-** (as quantized image). */
-void fquant(uint8 const* buf, uint8* wrk, auint bsiz, auint cols);
+/* The fast quantizer pass, reducing the occurrence weighted palette to the
+** given count of colors. The cols parameter is it's output target. */
+void fquant(iquant_pal_t* pal, auint cols);
 
 
 #endif

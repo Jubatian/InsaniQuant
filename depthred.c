@@ -4,7 +4,7 @@
 **  \author    Sandor Zsuga (Jubatian)
 **  \copyright 2013 - 2015, GNU General Public License version 2 or any later
 **             version, see LICENSE
-**  \date      2015.03.27
+**  \date      2015.03.29
 **
 **
 ** This program is free software: you can redistribute it and/or modify
@@ -23,119 +23,85 @@
 
 
 #include "depthred.h"
-#include "colcount.h"
+#include "coldepth.h"
+#include "palgen.h"
+#include "idata.h"
 
 
 
-/* Internal depth reduction tables for each depth */
-static uint8 depthred_tb[256U * 8U];
+/* Color count buffer. Placed in the global (file local) namespace since
+** putting 2 megs on the stack might not work out too well. */
+static uint8 depthred_ccb[(256U * 256U * 256U) >> 3];
 
-/* Whether the table was initialized already */
-static auint depthred_ti = 0U;
+/* Count of set bits table in a byte */
+static const uint8 depthred_bct[256] = {
+ 0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4,
+ 1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5,
+ 1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5,
+ 2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6,
+ 1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5,
+ 2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6,
+ 2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6,
+ 3, 4, 4, 5, 4, 5, 5, 6, 4, 5, 5, 6, 5, 6, 6, 7,
+ 1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5,
+ 2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6,
+ 2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6,
+ 3, 4, 4, 5, 4, 5, 5, 6, 4, 5, 5, 6, 5, 6, 6, 7,
+ 2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6,
+ 3, 4, 4, 5, 4, 5, 5, 6, 4, 5, 5, 6, 5, 6, 6, 7,
+ 3, 4, 4, 5, 4, 5, 5, 6, 4, 5, 5, 6, 5, 6, 6, 7,
+ 4, 5, 5, 6, 5, 6, 6, 7, 5, 6, 6, 7, 6, 7, 7, 8};
 
 
 
-/* Table initializer function */
-static void depthred_tb_init(void)
+/* Counts colors using a given target depth in the passed RGB image buffer.
+** The size is specified as pixel count. */
+static auint depthred_cc(uint8 const* buf, auint bsiz, auint depth)
 {
  auint i;
+ auint rgb;
+ auint r = 0U;
 
- if (depthred_ti){ return; }
+ /* Clear color count bitmap */
 
- for (i =   0U; i < 128U; i++){ depthred_tb[0x000U + i] = 0x00U; }
- for (i = 128U; i < 256U; i++){ depthred_tb[0x000U + i] = 0xFFU; }
+ memset(depthred_ccb, 0U, (256U * 256U * 256U) >> 3);
 
- for (i =   0U; i <  64U; i++){ depthred_tb[0x100U + i] = 0x00U; }
- for (i =  64U; i < 128U; i++){ depthred_tb[0x100U + i] = 0x55U; }
- for (i = 128U; i < 192U; i++){ depthred_tb[0x100U + i] = 0xAAU; }
- for (i = 192U; i < 256U; i++){ depthred_tb[0x100U + i] = 0xFFU; }
-
- for (i =   0U; i <  32U; i++){ depthred_tb[0x200U + i] = 0x00U; }
- for (i =  32U; i <  64U; i++){ depthred_tb[0x200U + i] = 0x24U; }
- for (i =  64U; i <  96U; i++){ depthred_tb[0x200U + i] = 0x49U; }
- for (i =  96U; i < 128U; i++){ depthred_tb[0x200U + i] = 0x6DU; }
- for (i = 128U; i < 160U; i++){ depthred_tb[0x200U + i] = 0x92U; }
- for (i = 160U; i < 192U; i++){ depthred_tb[0x200U + i] = 0xB6U; }
- for (i = 192U; i < 224U; i++){ depthred_tb[0x200U + i] = 0xDBU; }
- for (i = 224U; i < 256U; i++){ depthred_tb[0x200U + i] = 0xFFU; }
-
- for (i = 0U; i < 256U; i++){ depthred_tb[0x300U + i] = (i & 0xF0U) | (i >> 4U); }
-
- for (i = 0U; i < 256U; i++){ depthred_tb[0x400U + i] = (i & 0xF8U) | (i >> 5U); }
-
- for (i = 0U; i < 256U; i++){ depthred_tb[0x500U + i] = (i & 0xFCU) | (i >> 6U); }
-
- for (i = 0U; i < 256U; i++){ depthred_tb[0x600U + i] = (i & 0xFEU) | (i >> 7U); }
-
- for (i = 0U; i < 256U; i++){ depthred_tb[0x700U + i] = i; }
-
- depthred_ti = 1U;
-}
-
-
-
-/* Internal function for reducing depth. */
-static void depthred_dr(uint8* buf, auint bsiz, auint depth)
-{
- auint i;
-
- if (depth >  8U){ depth = 8U; }
- if (depth == 0U){ depth = 1U; }
-
- depth = (depth - 1U) << 8;
-
- if (!depthred_ti){ depthred_tb_init(); }
+ /* Collect used colors as a bitmap */
 
  for (i = 0U; i < bsiz; i++){
-  buf[(i * 3U) + 0U] = depthred_tb[depth + buf[(i * 3U) + 0U]];
-  buf[(i * 3U) + 1U] = depthred_tb[depth + buf[(i * 3U) + 1U]];
-  buf[(i * 3U) + 2U] = depthred_tb[depth + buf[(i * 3U) + 2U]];
+  rgb = coldepth(idata_get(buf, i), depth);
+  depthred_ccb[rgb >> 3] |= 1U << (rgb & 0x7U);
  }
+
+ /* Count the set bits */
+
+ for (i = 0U; i < ((256U * 256U * 256U) >> 3); i++){
+  r += depthred_bct[depthred_ccb[i]];
+ }
+
+ return r;
 }
 
 
 
 /* Reduces bit depth of the passed image by trimming low bits. The bsiz
-** parameter is the RGB image buffer's size in pixels, wrk is the work image
-** buffer (to which the reduction takes place). The clipped low bits are not
-** populated with zero, rather scaled to let them cover the entire original
-** color range (if clipped, the image would slightly darken as a result of the
-** quantization which is not desirable). */
-void depthred(uint8 const* buf, uint8* wrk, auint bsiz, auint cmax)
+** parameter is the RGB image buffer's size in pixels. The clipped low bits
+** are not populated with zero, rather scaled to let them cover the entire
+** original color range (if clipped, the image would slightly darken as a
+** result of the quantization which is not desirable). */
+void depthred(uint8 const* buf, auint bsiz, iquant_pal_t* pal, auint cols)
 {
+ auint dep = 8U;
  auint cc;
- auint dstart = 8U;
 
- cc = colcount(buf, bsiz);
- printf("Depth reduction: Initial color count: %u (target: %u)\n", cc, cmax);
+ cc = depthred_cc(buf, bsiz, dep);
+ printf("Depth reduction: Initial color count: %u (target: %u)\n", cc, cols);
 
- if (cc <= cmax){ /* Color count is already OK */
-  memcpy(wrk, buf, bsiz * 3U);
-  return;
+ while ((cols < cc) && (dep > 1U)){
+  dep--;
+  cc = depthred_cc(buf, bsiz, dep);
+  printf("Depth reduction: Depth: %u, Color count: %u (target: %u)\n", dep, cc, cols);
  }
 
- while ((cmax < cc) && (dstart > 1U)){
-  dstart--;
-  memcpy(wrk, buf, bsiz * 3U);
-  depthred_dr(wrk, bsiz, dstart);
-  cc = colcount(wrk, bsiz);
-  printf("Depth reduction: Depth: %u, Color count: %u (target: %u)\n", dstart, cc, cmax);
- }
-}
-
-
-
-/* Trims the passed input color down to the given depth. Note that it does not
-** just trims the lowest bits, rather expands so the resulting color space
-** still covers the entire 0 - 255 range. Depth can range from 1 - 8. */
-auint depthred_col(auint col, auint dep)
-{
- if (dep >= 8U){ return col; }
- if (dep == 0U){ dep = 1U; }
-
- dep = (dep - 1U) << 8;
-
- return ((auint)(depthred_tb[dep + ((col >> 16) & 0xFFU)]) << 16) |
-        ((auint)(depthred_tb[dep + ((col >>  8) & 0xFFU)]) <<  8) |
-        ((auint)(depthred_tb[dep + ((col      ) & 0xFFU)])      );
+ palgen(buf, bsiz, pal, dep);
 }

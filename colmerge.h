@@ -1,6 +1,6 @@
 /**
 **  \file
-**  \brief     The version string for the program
+**  \brief     InsaniQuant weighted color merge
 **  \author    Sandor Zsuga (Jubatian)
 **  \copyright 2013 - 2015, GNU General Public License version 2 or any later
 **             version, see LICENSE
@@ -22,4 +22,16 @@
 */
 
 
-#define IQUANT_VERSION "0.1.0"
+#ifndef CMERGE_H
+#define CMERGE_H
+
+#include "types.h"
+
+
+
+/* Merges two colors in the palette, to the first, zeroing the occurrence
+** of the second. */
+void colmerge(iquant_pal_t* pal, auint id0, auint id1);
+
+
+#endif

@@ -4,7 +4,7 @@
 **  \author    Sandor Zsuga (Jubatian)
 **  \copyright 2013 - 2015, GNU General Public License version 2 or any later
 **             version, see LICENSE
-**  \date      2015.03.27
+**  \date      2015.03.29
 **
 **
 ** This program is free software: you can redistribute it and/or modify
@@ -41,6 +41,25 @@ typedef  int32_t        sint32;
 typedef uint32_t        uint32;
 typedef   int8_t        sint8;
 typedef  uint8_t        uint8;
+
+
+
+/* Structure for one color with occupation data, and a work field to be used
+** by quantizing algorithms */
+typedef struct{
+ auint col;         /* RGB color value */
+ auint occ;         /* Occurrence */
+ auint wrk;         /* Work field (for algorithm-related temp. data) */
+}iquant_col_t;
+
+
+/* Structure for a palette of colors */
+typedef struct{
+ iquant_col_t* col; /* Colors in palette */
+ auint cct;         /* Current color count */
+ auint mct;         /* Maximal color count (size of the buffer under col) */
+ auint ocs;         /* Occurrence sum: total number of pixels */
+}iquant_pal_t;
 
 
 #endif
