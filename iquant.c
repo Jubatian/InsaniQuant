@@ -4,7 +4,7 @@
 **  \author    Sandor Zsuga (Jubatian)
 **  \copyright 2013 - 2015, GNU General Public License version 2 or any later
 **             version, see LICENSE
-**  \date      2015.03.29
+**  \date      2015.03.30
 **
 **
 ** This program is free software: you can redistribute it and/or modify
@@ -222,7 +222,7 @@ void iquant(iquant_pal_t* pal, auint cols, auint pdep)
 
   if (iquant_boc[i] != 0U){ /* Bucket valid */
    for (k = 0U; k < j; k++){
-    if (pal->col[i].col == iquant_bcl[k]){ break; }
+    if (pal->col[k].col == iquant_bcl[i]){ break; }
    }
    if (k == j){ /* No previous occurrence */
     pal->col[j].col = iquant_bcl[i];

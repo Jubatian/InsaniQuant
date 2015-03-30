@@ -4,7 +4,7 @@
 **  \author    Sandor Zsuga (Jubatian)
 **  \copyright 2013 - 2015, GNU General Public License version 2 or any later
 **             version, see LICENSE
-**  \date      2015.03.29
+**  \date      2015.03.30
 **
 **
 ** This program is free software: you can redistribute it and/or modify
@@ -104,16 +104,16 @@ static void coldiff_tb_init(void)
   coldiff_huetb[i] = ((( 0x80U - 0x72U) * (i - 0x75U)) / 0x0EU) + 0x72U;
  }
  for (i = 0x80U; i <  0xA5U; i++){ /* Cyan -> Blue begin */
-  coldiff_huetb[i] = ((( 0xAAU - 0x80U) * (i - 0x80U)) / 0x2AU) + 0x80U;
+  coldiff_huetb[i] = ((( 0xACU - 0x80U) * (i - 0x80U)) / 0x2CU) + 0x80U;
  }
  for (i = 0xA5U; i <  0xB5U; i++){ /* Cyan -> Blue end */
-  coldiff_huetb[i] = ((( 0xB5U - 0xAAU) * (i - 0xA5U)) / 0x0BU) + 0xAAU;
+  coldiff_huetb[i] = ((( 0xB5U - 0xACU) * (i - 0xA5U)) / 0x09U) + 0xACU;
  }
  for (i = 0xB5U; i <  0xC5U; i++){ /* Blue -> Purple begin */
-  coldiff_huetb[i] = ((( 0xC0U - 0xB5U) * (i - 0xB5U)) / 0x0BU) + 0xB5U;
+  coldiff_huetb[i] = ((( 0xBEU - 0xB5U) * (i - 0xB5U)) / 0x09U) + 0xB5U;
  }
  for (i = 0xC5U; i <  0xEAU; i++){ /* Blue -> Purple end */
-  coldiff_huetb[i] = ((( 0xEAU - 0xC0U) * (i - 0xC5U)) / 0x2AU) + 0xC0U;
+  coldiff_huetb[i] = ((( 0xEAU - 0xBEU) * (i - 0xC5U)) / 0x2CU) + 0xBEU;
  }
  for (i = 0xEAU; i <  0xF5U; i++){ /* Purple -> Red begin */
   coldiff_huetb[i] = ((( 0xF8U - 0xEAU) * (i - 0xEAU)) / 0x0EU) + 0xEAU;
@@ -230,12 +230,12 @@ auint coldiff(auint c0, auint c1)
 
  /* Greyscale difference */
 
- g0 = (((c0 >> 16) & 0xFFU) *  98U) +
-      (((c0 >>  8) & 0xFFU) * 128U) +
-      (((c0      ) & 0xFFU) *  30U);
- g1 = (((c1 >> 16) & 0xFFU) *  98U) +
-      (((c1 >>  8) & 0xFFU) * 128U) +
-      (((c1      ) & 0xFFU) *  30U);
+ g0 = (((c0 >> 16) & 0xFFU) * 100U) +
+      (((c0 >>  8) & 0xFFU) * 124U) +
+      (((c0      ) & 0xFFU) *  32U);
+ g1 = (((c1 >> 16) & 0xFFU) * 100U) +
+      (((c1 >>  8) & 0xFFU) * 124U) +
+      (((c1      ) & 0xFFU) *  32U);
  t = abs((asint)(g0) - (asint)(g1));
  r += (t * LUM_DIFF) >> 8;     /* Luminosity difference (0 - 65536) */
 
@@ -260,6 +260,6 @@ float coldiff_w(auint c0, auint p0, auint c1, auint p1, auint bsiz)
  ** simple weighting. Note that the result is only used in smaller / larger
  ** comparisons, so scaling is not important. */
 
- return (float)(cdf) * (float)(cdf) * (float)(cdf) * (float)(cdf) * (float)(cdf) *
+ return (float)(cdf) * (float)(cdf) * (float)(cdf) * (float)(cdf) *
         (float)(wgt);
 }
