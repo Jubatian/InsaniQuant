@@ -4,7 +4,7 @@
 **  \author    Sandor Zsuga (Jubatian)
 **  \copyright 2013 - 2015, GNU General Public License version 2 or any later
 **             version, see LICENSE
-**  \date      2015.03.29
+**  \date      2015.03.31
 **
 **
 ** This program is free software: you can redistribute it and/or modify
@@ -32,7 +32,7 @@
 ** color. The fourth color is obtained from the passed palette, by index.
 ** 'c0' takes less weight than 'c1' or 'c2': it should be the corner
 ** neighbor color. */
-static auint palapp_d_avg(auint tg, auint c0, auint c1, auint c2, iquant_pal_t const* pal)
+static auint palapp_d_avg(auint tg, auint c0, auint c1, auint c2, iquant_pal_t const* pal, auint dst)
 {
  auint r;
  auint g;
@@ -43,24 +43,24 @@ static auint palapp_d_avg(auint tg, auint c0, auint c1, auint c2, iquant_pal_t c
  auint md;
  auint mi;
 
- r = ( (((c0 >> 16) & 0xFFU) *  0x9AU) +
-       (((c1 >> 16) & 0xFFU) * 0x133U) +
-       (((c2 >> 16) & 0xFFU) * 0x133U) ) >> 8;
- g = ( (((c0 >>  8) & 0xFFU) *  0x9AU) +
-       (((c1 >>  8) & 0xFFU) * 0x133U) +
-       (((c2 >>  8) & 0xFFU) * 0x133U) ) >> 8;
- b = ( (((c0      ) & 0xFFU) *  0x9AU) +
-       (((c1      ) & 0xFFU) * 0x133U) +
-       (((c2      ) & 0xFFU) * 0x133U) ) >> 8;
+ r = (( ((c0 >> 16) & 0xFFU) +
+        ((c1 >> 16) & 0xFFU) +
+        ((c2 >> 16) & 0xFFU) ) * 2U) / 3U;
+ g = (( ((c0 >>  8) & 0xFFU) +
+        ((c1 >>  8) & 0xFFU) +
+        ((c2 >>  8) & 0xFFU) ) * 2U) / 3U;
+ b = (( ((c0      ) & 0xFFU) +
+        ((c1      ) & 0xFFU) +
+        ((c2      ) & 0xFFU) ) * 2U) / 3U;
 
  md = 0xFFFFFFFFU;
  mi = 0U;
  for (i = 0U; i < (pal->cct); i++){
-  c = (((r + ((pal->col[i].col >> 16) & 0xFFU)) >> 2) << 16) |
-      (((g + ((pal->col[i].col >>  8) & 0xFFU)) >> 2) <<  8) |
-      (((b + ((pal->col[i].col      ) & 0xFFU)) >> 2)      );
+  c = (((r + ((pal->col[i].col >> 16) & 0xFFU)) / 3U) << 16) |
+      (((g + ((pal->col[i].col >>  8) & 0xFFU)) / 3U) <<  8) |
+      (((b + ((pal->col[i].col      ) & 0xFFU)) / 3U)      );
   t = coldiff(tg, pal->col[i].col);
-  c = coldiff(tg, c) + (t >> 2) + ((t * t) >> 10);
+  c = coldiff(tg, c) + (t >> dst) + ((t * t) >> (dst + 6U));
   if (c < md){
    md = c;
    mi = i;
@@ -78,28 +78,43 @@ void palapp_dither(uint8 const* buf, uint8* wrk, auint wd, auint hg, iquant_pal_
  auint i;
  auint j;
  auint c0;
+ auint dst;
+
+ /* Set dithering strength by palette size */
+
+ if       (pal->cct <=  8U){
+  dst = 6U;
+ }else if (pal->cct <= 16U){
+  dst = 5U;
+ }else if (pal->cct <= 32U){
+  dst = 4U;
+ }else if (pal->cct <= 64U){
+  dst = 3U;
+ }else{
+  dst = 2U;
+ }
 
  /* Quantize the image with dithering applied */
 
  printf("Dither: Quantizing the image (%u colors)\n", pal->cct);
 
  c0 = idata_get(buf, 0U);
- c0 = pal->col[palapp_d_avg(c0, c0, c0, c0, pal)].col;
+ c0 = pal->col[palapp_d_avg(c0, c0, c0, c0, pal, dst)].col;
  idata_set(wrk, 0U, c0);
  for (i = 1U; i < wd; i++){
   c0 = idata_get(buf, i);
-  c0 = pal->col[palapp_d_avg(c0, c0, idata_get(wrk, i - 1U), c0, pal)].col;
+  c0 = pal->col[palapp_d_avg(c0, c0, idata_get(wrk, i - 1U), c0, pal, dst)].col;
   idata_set(wrk, i, c0);
  }
  for (j = 1U; j < hg; j++){
   c0 = idata_get(buf, j * wd);
-  c0 = pal->col[palapp_d_avg(c0, c0, idata_get(wrk, (j - 1U) * wd), c0, pal)].col;
+  c0 = pal->col[palapp_d_avg(c0, c0, idata_get(wrk, (j - 1U) * wd), c0, pal, dst)].col;
   idata_set(wrk, j * wd, c0);
   for (i = 1U; i < wd; i++){
    c0 = idata_get(buf, (j * wd) + i);
    c0 = pal->col[palapp_d_avg(c0, idata_get(wrk, ((j - 1U) * wd) + (i - 1U)),
                                   idata_get(wrk, ((j     ) * wd) + (i - 1U)),
-                                  idata_get(wrk, ((j - 1U) * wd) + (i     )), pal)].col;
+                                  idata_get(wrk, ((j - 1U) * wd) + (i     )), pal, dst)].col;
    idata_set(wrk, (j * wd) + i, c0);
   }
  }

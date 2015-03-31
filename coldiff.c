@@ -4,7 +4,7 @@
 **  \author    Sandor Zsuga (Jubatian)
 **  \copyright 2013 - 2015, GNU General Public License version 2 or any later
 **             version, see LICENSE
-**  \date      2015.03.30
+**  \date      2015.03.31
 **
 **
 ** This program is free software: you can redistribute it and/or modify
@@ -251,6 +251,17 @@ float coldiff_w(auint c0, auint p0, auint c1, auint p1, auint bsiz)
 {
  auint cdf = coldiff(c0, c1);
  auint wgt = p0 + p1;
+ float cdm = (float)(cdf);
+ float wgm;
+
+ /* Favor merging in colors with smaller occurrence */
+
+ if (p0 < p1){
+  wgt -= (p1 - p0) >> 1;
+ }else{
+  wgt -= (p0 - p1) >> 1;
+ }
+ wgm = (float)(wgt);
 
  /* Some explanations on this part:
  ** Two important characteristics of the quantized image battle here: the
@@ -260,6 +271,6 @@ float coldiff_w(auint c0, auint p0, auint c1, auint p1, auint bsiz)
  ** simple weighting. Note that the result is only used in smaller / larger
  ** comparisons, so scaling is not important. */
 
- return (float)(cdf) * (float)(cdf) * (float)(cdf) * (float)(cdf) *
-        (float)(wgt);
+ return cdm * cdm * cdm * cdm *
+        wgm;
 }
