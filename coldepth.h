@@ -4,7 +4,7 @@
 **  \author    Sandor Zsuga (Jubatian)
 **  \copyright 2013 - 2015, GNU General Public License version 2 or any later
 **             version, see LICENSE
-**  \date      2015.03.29
+**  \date      2015.04.02
 **
 **
 ** This program is free software: you can redistribute it and/or modify
@@ -32,6 +32,11 @@
 ** just trims the lowest bits, rather expands so the resulting color space
 ** still covers the entire 0 - 255 range. Depth can range from 1 - 8. */
 auint coldepth(auint col, auint dep);
+
+
+/* Returns the nearest color of the given depth to the passed one by
+** difference (as from coldiff). */
+auint coldepth_d(auint col, auint dep);
 
 
 #endif

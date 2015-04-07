@@ -25,9 +25,7 @@ OBJECTS= $(OBD)main.o
 OBJECTS+=$(OBD)depthred.o
 OBJECTS+=$(OBD)coldiff.o
 OBJECTS+=$(OBD)coldepth.o
-OBJECTS+=$(OBD)colmerge.o
-OBJECTS+=$(OBD)iquant.o
-OBJECTS+=$(OBD)fquant.o
+OBJECTS+=$(OBD)mquant.o
 OBJECTS+=$(OBD)palapp.o
 OBJECTS+=$(OBD)idata.o
 OBJECTS+=$(OBD)palgen.o
@@ -57,14 +55,8 @@ $(OBD)coldiff.o: coldiff.c *.h
 $(OBD)coldepth.o: coldepth.c *.h
 	$(CC) -c coldepth.c -o $(OBD)coldepth.o $(CFSIZ)
 
-$(OBD)colmerge.o: colmerge.c *.h
-	$(CC) -c colmerge.c -o $(OBD)colmerge.o $(CFSIZ)
-
-$(OBD)iquant.o: iquant.c *.h
-	$(CC) -c iquant.c -o $(OBD)iquant.o $(CFSIZ)
-
-$(OBD)fquant.o: fquant.c *.h
-	$(CC) -c fquant.c -o $(OBD)fquant.o $(CFSIZ)
+$(OBD)mquant.o: mquant.c *.h
+	$(CC) -c mquant.c -o $(OBD)mquant.o $(CFSIZ)
 
 $(OBD)palapp.o: palapp.c *.h
 	$(CC) -c palapp.c -o $(OBD)palapp.o $(CFSIZ)

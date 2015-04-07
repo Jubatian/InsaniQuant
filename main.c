@@ -4,7 +4,7 @@
 **  \author    Sandor Zsuga (Jubatian)
 **  \copyright 2013 - 2015, GNU General Public License version 2 or any later
 **             version, see LICENSE
-**  \date      2015.03.27
+**  \date      2015.04.01
 **
 **
 ** This program is free software: you can redistribute it and/or modify
@@ -30,8 +30,7 @@
 #include "types.h"
 #include "version.h"
 #include "depthred.h"
-#include "fquant.h"
-#include "iquant.h"
+#include "mquant.h"
 #include "palapp.h"
 
 
@@ -157,7 +156,7 @@ int main(int argc, char** argv)
 
  tptr = malloc( (par_w * par_h * 3U) +
                 (par_w * par_h * 3U) +
-                (sizeof(iquant_col_t) * FQUANT_COLS) );
+                (sizeof(iquant_col_t) * MQUANT_COLS) );
  if (tptr == NULL){
   fprintf(stderr, "Couldn't allocate memory for image (%u bytes)\n", par_w * par_h * 3U);
   fclose(f_inp);
@@ -167,7 +166,7 @@ int main(int argc, char** argv)
  img_buf = (void*)(((uint8*)(tptr)));
  img_wrk = (void*)(((uint8*)(tptr)) + (par_w * par_h * 3U));
  pal.col = (void*)(((uint8*)(tptr)) + (par_w * par_h * 3U) + (par_w * par_h * 3U));
- pal.mct = FQUANT_COLS;
+ pal.mct = MQUANT_COLS;
 
  s_tmp = fread(img_buf, 1, par_w * par_h * 3U, f_inp); /* Note: fits in 32 bit unsigned int due to size limits */
  if ((par_w * par_h * 3U) != (auint)(s_tmp)){
@@ -188,9 +187,8 @@ int main(int argc, char** argv)
  printf("- Dithering request ...: %u\n", par_d);
  printf("\n");
 
- depthred(img_buf, par_w * par_h, &pal, FQUANT_COLS);
- fquant(&pal, IQUANT_COLS);
- iquant(&pal, par_c, par_b);
+ depthred(img_buf, par_w * par_h, &pal, MQUANT_COLS);
+ mquant(&pal, par_c, par_b);
  if (par_d){
   palapp_dither(img_buf, img_wrk, par_w, par_h, &pal);
  }else{

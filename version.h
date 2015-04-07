@@ -4,7 +4,7 @@
 **  \author    Sandor Zsuga (Jubatian)
 **  \copyright 2013 - 2015, GNU General Public License version 2 or any later
 **             version, see LICENSE
-**  \date      2015.03.31
+**  \date      2015.04.07
 **
 **
 ** This program is free software: you can redistribute it and/or modify
@@ -22,4 +22,4 @@
 */
 
 
-#define IQUANT_VERSION "0.2.2"
+#define IQUANT_VERSION "0.3.0"

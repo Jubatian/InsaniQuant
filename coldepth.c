@@ -4,7 +4,7 @@
 **  \author    Sandor Zsuga (Jubatian)
 **  \copyright 2013 - 2015, GNU General Public License version 2 or any later
 **             version, see LICENSE
-**  \date      2015.03.29
+**  \date      2015.04.02
 **
 **
 ** This program is free software: you can redistribute it and/or modify
@@ -23,10 +23,13 @@
 
 
 #include "coldepth.h"
+#include "coldiff.h"
 
 
 /* Internal depth reduction tables for each depth */
-static uint8 coldepth_tb[256U * 8U];
+static uint8 coldepth_tb[256U * 7U];
+static uint8 coldepth_se[256U * 7U];
+static uint8 coldepth_le[256U * 7U];
 
 /* Whether the table was initialized already */
 static auint coldepth_ti = 0U;
@@ -37,6 +40,8 @@ static auint coldepth_ti = 0U;
 static void coldepth_tb_init(void)
 {
  auint i;
+ auint j;
+ auint k;
 
  if (coldepth_ti){ return; }
 
@@ -65,7 +70,16 @@ static void coldepth_tb_init(void)
 
  for (i = 0U; i < 256U; i++){ coldepth_tb[0x600U + i] = (i & 0xFEU) | (i >> 7U); }
 
- for (i = 0U; i < 256U; i++){ coldepth_tb[0x700U + i] = i; }
+ for (j = 0U; j < 256U * 7U; j += 256U){
+  for (i = 0U; i < 256U; i++){
+   k = i;
+   while (i < coldepth_tb[j + k]){ k--; }
+   coldepth_se[j + i] = coldepth_tb[j + k];
+   k = i;
+   while (i > coldepth_tb[j + k]){ k++; }
+   coldepth_le[j + i] = coldepth_tb[j + k];
+  }
+ }
 
  coldepth_ti = 1U;
 }
@@ -87,4 +101,92 @@ auint coldepth(auint col, auint dep)
  return ((auint)(coldepth_tb[dep + ((col >> 16) & 0xFFU)]) << 16) |
         ((auint)(coldepth_tb[dep + ((col >>  8) & 0xFFU)]) <<  8) |
         ((auint)(coldepth_tb[dep + ((col      ) & 0xFFU)])      );
+}
+
+
+
+/* Combines color from R G B */
+auint coldepth_ccom(auint r, auint g, auint b)
+{
+ return ((r & 0xFFU) << 16) |
+        ((g & 0xFFU) <<  8) |
+        ((b & 0xFFU)      );
+}
+
+
+
+/* Returns the nearest color of the given depth to the passed one by
+** difference (as from coldiff). */
+auint coldepth_d(auint col, auint dep)
+{
+ auint r;
+ auint g;
+ auint b;
+ auint mv;
+ auint mc;
+ auint t;
+ auint u;
+
+ if (dep >= 8U){ return col; }
+ if (dep == 0U){ dep = 1U; }
+
+ if (!coldepth_ti){ coldepth_tb_init(); }
+
+ dep = (dep - 1U) << 8;
+
+ r = (col >> 16) & 0xFFU;
+ g = (col >>  8) & 0xFFU;
+ b = (col      ) & 0xFFU;
+
+ /* Just selects the least different out of the 8 bounding colors by depth
+ ** (trying bounds for each component individually) */
+
+ t  = coldepth_ccom(coldepth_se[dep + r], coldepth_se[dep + g], coldepth_se[dep + b]);
+ u  = coldiff(col, t);
+ mv = u;
+ mc = t;
+ t  = coldepth_ccom(coldepth_se[dep + r], coldepth_se[dep + g], coldepth_le[dep + b]);
+ u  = coldiff(col, t);
+ if (mv > u){
+  mv = u;
+  mc = t;
+ }
+ t  = coldepth_ccom(coldepth_se[dep + r], coldepth_le[dep + g], coldepth_se[dep + b]);
+ u  = coldiff(col, t);
+ if (mv > u){
+  mv = u;
+  mc = t;
+ }
+ t  = coldepth_ccom(coldepth_se[dep + r], coldepth_le[dep + g], coldepth_le[dep + b]);
+ u  = coldiff(col, t);
+ if (mv > u){
+  mv = u;
+  mc = t;
+ }
+ t  = coldepth_ccom(coldepth_le[dep + r], coldepth_se[dep + g], coldepth_se[dep + b]);
+ u  = coldiff(col, t);
+ if (mv > u){
+  mv = u;
+  mc = t;
+ }
+ t  = coldepth_ccom(coldepth_le[dep + r], coldepth_se[dep + g], coldepth_le[dep + b]);
+ u  = coldiff(col, t);
+ if (mv > u){
+  mv = u;
+  mc = t;
+ }
+ t  = coldepth_ccom(coldepth_le[dep + r], coldepth_le[dep + g], coldepth_se[dep + b]);
+ u  = coldiff(col, t);
+ if (mv > u){
+  mv = u;
+  mc = t;
+ }
+ t  = coldepth_ccom(coldepth_le[dep + r], coldepth_le[dep + g], coldepth_le[dep + b]);
+ u  = coldiff(col, t);
+ if (mv > u){
+  mv = u;
+  mc = t;
+ }
+
+ return mc;
 }

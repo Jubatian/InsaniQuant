@@ -4,7 +4,7 @@
 **  \author    Sandor Zsuga (Jubatian)
 **  \copyright 2013 - 2015, GNU General Public License version 2 or any later
 **             version, see LICENSE
-**  \date      2015.03.31
+**  \date      2015.04.07
 **
 **
 ** This program is free software: you can redistribute it and/or modify
@@ -191,6 +191,15 @@ static void coldiff_huesat(auint c, auint* h, auint* s)
 
 
 
+/* Returns a luminosity value for the color, between 0 and 65535 */
+auint coldiff_getlum(auint c0)
+{
+ return (((c0 >> 16) & 0xFFU) * 100U) +
+        (((c0 >>  8) & 0xFFU) * 124U) +
+        (((c0      ) & 0xFFU) *  34U);
+}
+
+
 
 /* Normal color difference calculation between two RGB colors. Returns a
 ** difference value between 0 and 4096. */
@@ -230,47 +239,10 @@ auint coldiff(auint c0, auint c1)
 
  /* Greyscale difference */
 
- g0 = (((c0 >> 16) & 0xFFU) * 100U) +
-      (((c0 >>  8) & 0xFFU) * 124U) +
-      (((c0      ) & 0xFFU) *  32U);
- g1 = (((c1 >> 16) & 0xFFU) * 100U) +
-      (((c1 >>  8) & 0xFFU) * 124U) +
-      (((c1      ) & 0xFFU) *  32U);
+ g0 = coldiff_getlum(c0);
+ g1 = coldiff_getlum(c1);
  t = abs((asint)(g0) - (asint)(g1));
  r += (t * LUM_DIFF) >> 8;     /* Luminosity difference (0 - 65536) */
 
  return (r >> 6);
-}
-
-
-
-/* Weighted color difference calculation: uses the occurrence data relative
-** to the image total size to weight difference (covering larger area makes
-** differences larger). */
-float coldiff_w(auint c0, auint p0, auint c1, auint p1, auint bsiz)
-{
- auint cdf = coldiff(c0, c1);
- auint wgt = p0 + p1;
- float cdm = (float)(cdf);
- float wgm;
-
- /* Favor merging in colors with smaller occurrence */
-
- if (p0 < p1){
-  wgt -= (p1 - p0) >> 1;
- }else{
-  wgt -= (p0 - p1) >> 1;
- }
- wgm = (float)(wgt);
-
- /* Some explanations on this part:
- ** Two important characteristics of the quantized image battle here: the
- ** preservation of smaller distinctly colored areas, and the faithful
- ** reproduction of relatively large areas, especially gradients. For the
- ** former, the color difference raised to a power works. The latter is
- ** simple weighting. Note that the result is only used in smaller / larger
- ** comparisons, so scaling is not important. */
-
- return cdm * cdm * cdm * cdm *
-        wgm;
 }

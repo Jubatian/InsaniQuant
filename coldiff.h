@@ -4,7 +4,7 @@
 **  \author    Sandor Zsuga (Jubatian)
 **  \copyright 2013 - 2015, GNU General Public License version 2 or any later
 **             version, see LICENSE
-**  \date      2015.03.29
+**  \date      2015.04.07
 **
 **
 ** This program is free software: you can redistribute it and/or modify
@@ -28,13 +28,12 @@
 #include "types.h"
 
 
+/* Returns a luminosity value for the color, between 0 and 65535 */
+auint coldiff_getlum(auint c0);
+
 /* Normal color difference calculation between two RGB colors. Returns a
 ** difference value between 0 and 4096. */
 auint coldiff(auint c0, auint c1);
-
-/* Weighted color difference calculation: uses the occurrence data relative
-** to the image total size to weight difference */
-float coldiff_w(auint c0, auint p0, auint c1, auint p1, auint bsiz);
 
 
 #endif
