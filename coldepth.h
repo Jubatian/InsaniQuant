@@ -2,9 +2,9 @@
 **  \file
 **  \brief     InsaniQuant bit depth reduction pass
 **  \author    Sandor Zsuga (Jubatian)
-**  \copyright 2013 - 2015, GNU General Public License version 2 or any later
+**  \copyright 2013 - 2017, GNU General Public License version 2 or any later
 **             version, see LICENSE
-**  \date      2015.04.02
+**  \date      2017.03.31
 **
 **
 ** This program is free software: you can redistribute it and/or modify
@@ -30,7 +30,8 @@
 
 /* Trims the passed input color down to the given depth. Note that it does not
 ** just trims the lowest bits, rather expands so the resulting color space
-** still covers the entire 0 - 255 range. Depth can range from 1 - 8. */
+** still covers the entire 0 - 255 range. Depth can range from 0x111 - 0x888
+** (R:G:B depth). */
 auint coldepth(auint col, auint dep);
 
 

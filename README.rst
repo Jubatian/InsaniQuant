@@ -89,7 +89,8 @@ This script accepts 3 to 5 parameters as follows:
 
 - Optional target palette bit depth, between 1 and 8. By default 8 is assumed.
   You can reduce the palette bit depth for example to produce an Amiga or
-  RRPGE compatible palette (4 bits).
+  RRPGE compatible palette (4 bits). You may also specify 3 digits for
+  seperate depths for R:G:B repsectively (such as to quantize to 3:3:2 RGB).
 
 - Optional dithering setting: a 'd' turns on dithering.
 
@@ -106,7 +107,8 @@ This script accepts 2 to 4 parameters as follows:
 
 - Optional target palette bit depth, between 1 and 8. By default 8 is assumed.
   You can reduce the palette bit depth for example to produce an Amiga or
-  RRPGE compatible palette (4 bits).
+  RRPGE compatible palette (4 bits). You may also specify 3 digits for
+  seperate depths for R:G:B repsectively (such as to quantize to 3:3:2 RGB).
 
 - Optional dithering setting: a 'd' turns on dithering.
 

@@ -2,9 +2,9 @@
 **  \file
 **  \brief     InsaniQuant main file
 **  \author    Sandor Zsuga (Jubatian)
-**  \copyright 2013 - 2015, GNU General Public License version 2 or any later
+**  \copyright 2013 - 2017, GNU General Public License version 2 or any later
 **             version, see LICENSE
-**  \date      2015.04.01
+**  \date      2017.03.31
 **
 **
 ** This program is free software: you can redistribute it and/or modify
@@ -40,7 +40,7 @@ static char const* main_appname = "InsaniQuant, Version: " IQUANT_VERSION;
 
 /* Other elements */
 static char const* main_appauth = "By: Sandor Zsuga (Jubatian)\n";
-static char const* main_copyrig = "Copyright: 2013 - 2015, GNU General Public License version 2\n"
+static char const* main_copyrig = "Copyright: 2013 - 2017, GNU General Public License version 2\n"
                                   "           or any later version, see LICENSE\n";
 
 
@@ -53,6 +53,24 @@ auint main_sdec(char const* str)
  auint i = 0U;
  while ((str[i] >= '0') && (str[i] <= '9')){
   r = (r * 10U) + (auint)(str[i] - '0');
+  i ++;
+ }
+ return r;
+}
+
+
+
+/* Scan a hexadecimal value (process parameters) */
+
+auint main_shex(char const* str)
+{
+ auint r = 0U;
+ auint i = 0U;
+ while (1){
+  if      ((str[i] >= '0') && (str[i] <= '9')){ r = (r << 4) + (auint)(str[i] - '0'); }
+  else if ((str[i] >= 'a') && (str[i] <= 'f')){ r = (r << 4) + (auint)(str[i] - 'a' + 10U); }
+  else if ((str[i] >= 'A') && (str[i] <= 'F')){ r = (r << 4) + (auint)(str[i] - 'A' + 10U); }
+  else                                        { break; }
   i ++;
  }
  return r;
@@ -98,6 +116,8 @@ int main(int argc, char** argv)
   printf("- Output file name (creates new .rgb file)\n");
   printf("- (Optional) Palette bit depth (1 - 8), defaults to 8\n");
   printf("- (Optional) Request dithering ('d'), defaults to disabled\n");
+  printf("The bit depth can also be specified as a 3 digit number to specify different\n");
+  printf("bit depths for red, green and blue respectively.\n");
   exit(1);
  }
 
@@ -110,10 +130,10 @@ int main(int argc, char** argv)
   if (argv[6][0] == 'd'){
    par_d = 1U;
    if (argc > 7){
-    par_b = main_sdec(argv[7]);
+    par_b = main_shex(argv[7]);
    }
   }else{
-   par_b = main_sdec(argv[6]);
+   par_b = main_shex(argv[6]);
    if (argc > 7){
     if (argv[7][0] == 'd'){
      par_d = 1U;
@@ -134,8 +154,11 @@ int main(int argc, char** argv)
   fprintf(stderr, "Invalid color count (%u)\n", par_c);
   exit(1);
  }
- if ((par_b  < 1U) || (par_b > 8U)){
-  fprintf(stderr, "Bit depth must be between 1 and 8 (%u)\n", par_b);
+ if ( ( (par_b <     1U) || (par_b >     8U) ) &&
+      ( (par_b < 0x111U) || (par_b > 0x888U) ||
+        ((par_b & 0xFU) > 0x8U) || ((par_b & 0xFFU) > 0x88U) ||
+        ((par_b & 0xFU) < 0x1U) || ((par_b & 0xFFU) < 0x11U) ) ){
+  fprintf(stderr, "Bit depth must be between 1 and 8 or must be a 3 digit number (%u)\n", par_b);
   exit(1);
  }
 
@@ -151,6 +174,10 @@ int main(int argc, char** argv)
   fclose(f_inp);
   exit(1);
  }
+
+ /* Convert bit depth to specify R:G:B bits */
+
+ if (par_b <= 8U){ par_b = par_b | (par_b << 4) | (par_b << 8); }
 
  /* Attempt to allocate buffers, and load the input file in it. */
 
@@ -183,7 +210,7 @@ int main(int argc, char** argv)
  printf("- Height ..............: %u px\n", par_h);
  printf("- Target color count ..: %u\n", par_c);
  printf("- Output file .........: %s\n", argv[5]);
- printf("- Target palette depth : %u bits\n", par_b);
+ printf("- Target palette depth : %x R:G:B bits\n", par_b);
  printf("- Dithering request ...: %u\n", par_d);
  printf("\n");
 
