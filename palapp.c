@@ -2,9 +2,9 @@
 **  \file
 **  \brief     InsaniQuant palette apply
 **  \author    Sandor Zsuga (Jubatian)
-**  \copyright 2013 - 2015, GNU General Public License version 2 or any later
+**  \copyright 2013 - 2017, GNU General Public License version 2 or any later
 **             version, see LICENSE
-**  \date      2015.03.31
+**  \date      2017.03.31
 **
 **
 ** This program is free software: you can redistribute it and/or modify
@@ -72,6 +72,27 @@ static auint palapp_d_avg(auint tg, auint c0, auint c1, auint c2, iquant_pal_t c
 
 
 
+/* Calculates overall difference between 4 colors, used to detect how "flat"
+** is the region which is dithered. If the region is not flat, then dithering
+** is reduced. */
+static auint palapp_d_flr(auint c0, auint c1, auint c2, auint c3)
+{
+ auint ret;
+
+ ret = coldiff(c0, c1) +
+       coldiff(c0, c2) +
+       coldiff(c0, c3) +
+       coldiff(c1, c2) +
+       coldiff(c1, c3) +
+       coldiff(c2, c3);
+
+ if (ret < 1024U){ return 0U; }
+ if (ret < 4096U){ return 1U; }
+ return 2U;
+}
+
+
+
 /* Ditherizes the image in buf, into wrk. */
 void palapp_dither(uint8 const* buf, uint8* wrk, auint wd, auint hg, iquant_pal_t const* pal)
 {
@@ -79,6 +100,7 @@ void palapp_dither(uint8 const* buf, uint8* wrk, auint wd, auint hg, iquant_pal_
  auint j;
  auint c0;
  auint dst;
+ auint ddf;
 
  /* Set dithering strength by palette size */
 
@@ -102,19 +124,24 @@ void palapp_dither(uint8 const* buf, uint8* wrk, auint wd, auint hg, iquant_pal_
  c0 = pal->col[palapp_d_avg(c0, c0, c0, c0, pal, dst)].col;
  idata_set(wrk, 0U, c0);
  for (i = 1U; i < wd; i++){
-  c0 = idata_get(buf, i);
-  c0 = pal->col[palapp_d_avg(c0, c0, idata_get(wrk, i - 1U), c0, pal, dst)].col;
+  c0  = idata_get(buf, i);
+  ddf = dst - palapp_d_flr(c0, c0, idata_get(buf, i - 1U), idata_get(buf, i - 1U));
+  c0  = pal->col[palapp_d_avg(c0, c0, idata_get(wrk, i - 1U), c0, pal, ddf)].col;
   idata_set(wrk, i, c0);
  }
  for (j = 1U; j < hg; j++){
-  c0 = idata_get(buf, j * wd);
-  c0 = pal->col[palapp_d_avg(c0, c0, idata_get(wrk, (j - 1U) * wd), c0, pal, dst)].col;
+  c0  = idata_get(buf, j * wd);
+  ddf = dst - palapp_d_flr(c0, c0, idata_get(buf, (j - 1U) * wd), idata_get(buf, (j - 1U) * wd));
+  c0  = pal->col[palapp_d_avg(c0, c0, idata_get(wrk, (j - 1U) * wd), c0, pal, ddf)].col;
   idata_set(wrk, j * wd, c0);
   for (i = 1U; i < wd; i++){
-   c0 = idata_get(buf, (j * wd) + i);
-   c0 = pal->col[palapp_d_avg(c0, idata_get(wrk, ((j - 1U) * wd) + (i - 1U)),
-                                  idata_get(wrk, ((j     ) * wd) + (i - 1U)),
-                                  idata_get(wrk, ((j - 1U) * wd) + (i     )), pal, dst)].col;
+   c0  = idata_get(buf, (j * wd) + i);
+   ddf = dst -    palapp_d_flr(c0, idata_get(buf, ((j - 1U) * wd) + (i - 1U)),
+                                   idata_get(buf, ((j     ) * wd) + (i - 1U)),
+                                   idata_get(buf, ((j - 1U) * wd) + (i     )));
+   c0  = pal->col[palapp_d_avg(c0, idata_get(wrk, ((j - 1U) * wd) + (i - 1U)),
+                                   idata_get(wrk, ((j     ) * wd) + (i - 1U)),
+                                   idata_get(wrk, ((j - 1U) * wd) + (i     )), pal, ddf)].col;
    idata_set(wrk, (j * wd) + i, c0);
   }
  }
