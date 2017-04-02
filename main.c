@@ -4,7 +4,7 @@
 **  \author    Sandor Zsuga (Jubatian)
 **  \copyright 2013 - 2017, GNU General Public License version 2 or any later
 **             version, see LICENSE
-**  \date      2017.03.31
+**  \date      2017.04.02
 **
 **
 ** This program is free software: you can redistribute it and/or modify
@@ -32,11 +32,12 @@
 #include "depthred.h"
 #include "mquant.h"
 #include "palapp.h"
+#include "uzebox.h"
 
 
 
 /* Application name string */
-static char const* main_appname = "InsaniQuant, Version: " IQUANT_VERSION;
+static char const* main_appname = "InsaniQuant for Uzebox, Version: " IQUANT_VERSION;
 
 /* Other elements */
 static char const* main_appauth = "By: Sandor Zsuga (Jubatian)\n";
@@ -60,24 +61,6 @@ auint main_sdec(char const* str)
 
 
 
-/* Scan a hexadecimal value (process parameters) */
-
-auint main_shex(char const* str)
-{
- auint r = 0U;
- auint i = 0U;
- while (1){
-  if      ((str[i] >= '0') && (str[i] <= '9')){ r = (r << 4) + (auint)(str[i] - '0'); }
-  else if ((str[i] >= 'a') && (str[i] <= 'f')){ r = (r << 4) + (auint)(str[i] - 'a' + 10U); }
-  else if ((str[i] >= 'A') && (str[i] <= 'F')){ r = (r << 4) + (auint)(str[i] - 'A' + 10U); }
-  else                                        { break; }
-  i ++;
- }
- return r;
-}
-
-
-
 /* Main */
 
 int main(int argc, char** argv)
@@ -88,7 +71,9 @@ int main(int argc, char** argv)
  auint par_h;
  auint par_c;
  auint par_b;
+ auint par_f;
  auint par_d;
+ auint par_x;
  void* tptr;
  uint8* img_buf;
  uint8* img_wrk;
@@ -107,38 +92,36 @@ int main(int argc, char** argv)
  /* Load parameters, trying to open the files as well (note: argv[0] is the
  ** InsaniQuant executable's path) */
 
- if (argc <= 5){
-  printf("Needs at least 5 parameters:\n\n");
+ if (argc <= 6){
+  printf("Needs at least 6 parameters:\n\n");
   printf("- Input file name (.rgb file, as from ImageMagick)\n");
   printf("- Width of the image in pixels\n");
   printf("- Height of the image in pixels\n");
   printf("- Target color count (2 - 256)\n");
-  printf("- Output file name (creates new .rgb file)\n");
-  printf("- (Optional) Palette bit depth (1 - 8), defaults to 8\n");
+  printf("- Output file name\n");
+  printf("- Output format\n");
   printf("- (Optional) Request dithering ('d'), defaults to disabled\n");
-  printf("The bit depth can also be specified as a 3 digit number to specify different\n");
-  printf("bit depths for red, green and blue respectively.\n");
+  printf("- (Optional) Request text (hexa) output ('h'), defaults to binary\n\n");
+  printf("The output formats:\n\n");
+  printf("- 0: 16 color: 2 byte Width, 2 byte Height, 16 byte Palette, Data\n\n");
+  printf("In all formats, multi byte values are Little Endian,\n");
+  printf("pixel order is high bits corresponding to left pixels.\n\n");
   exit(1);
  }
 
  par_w = main_sdec(argv[2]);
  par_h = main_sdec(argv[3]);
  par_c = main_sdec(argv[4]);
- par_b = 8U;
+ par_f = main_sdec(argv[6]);
+ par_b = 0x332U;
  par_d = 0U;
- if (argc > 6){
-  if (argv[6][0] == 'd'){
-   par_d = 1U;
-   if (argc > 7){
-    par_b = main_shex(argv[7]);
-   }
-  }else{
-   par_b = main_shex(argv[6]);
-   if (argc > 7){
-    if (argv[7][0] == 'd'){
-     par_d = 1U;
-    }
-   }
+ par_x = 0U;
+ if (argc > 7){
+  if (argv[7][0] == 'd'){ par_d = 1U; }
+  if (argv[7][0] == 'h'){ par_x = 1U; }
+  if (argc > 8){
+   if (argv[8][0] == 'd'){ par_d = 1U; }
+   if (argv[8][0] == 'h'){ par_x = 1U; }
   }
  }
 
@@ -154,12 +137,17 @@ int main(int argc, char** argv)
   fprintf(stderr, "Invalid color count (%u)\n", par_c);
   exit(1);
  }
- if ( ( (par_b <     1U) || (par_b >     8U) ) &&
-      ( (par_b < 0x111U) || (par_b > 0x888U) ||
-        ((par_b & 0xFU) > 0x8U) || ((par_b & 0xFFU) > 0x88U) ||
-        ((par_b & 0xFU) < 0x1U) || ((par_b & 0xFFU) < 0x11U) ) ){
-  fprintf(stderr, "Bit depth must be between 1 and 8 or must be a 3 digit number (%u)\n", par_b);
-  exit(1);
+
+ switch (par_f){ /* Format constraints */
+
+  case 0U: /* 16 color, 2b width, 2b height, palette, data */
+   if (par_c > 16U){ par_c = 16U; }
+   break;
+
+  default: /* Unknown format */
+   fprintf(stderr, "Unknown format (%u)\n", par_f);
+   exit(1);
+
  }
 
  f_inp = fopen(argv[1], "rb");
@@ -174,10 +162,6 @@ int main(int argc, char** argv)
   fclose(f_inp);
   exit(1);
  }
-
- /* Convert bit depth to specify R:G:B bits */
-
- if (par_b <= 8U){ par_b = par_b | (par_b << 4) | (par_b << 8); }
 
  /* Attempt to allocate buffers, and load the input file in it. */
 
@@ -212,6 +196,8 @@ int main(int argc, char** argv)
  printf("- Output file .........: %s\n", argv[5]);
  printf("- Target palette depth : %x R:G:B bits\n", par_b);
  printf("- Dithering request ...: %u\n", par_d);
+ printf("- Uzebox output format : %u\n", par_f);
+ printf("- Hexadecimal output ..: %u\n", par_x);
  printf("\n");
 
  depthred(img_buf, par_w * par_h, &pal, MQUANT_COLS);
@@ -224,10 +210,7 @@ int main(int argc, char** argv)
 
  /* Write back, clean up and exit */
 
- s_tmp = fwrite(img_wrk, 1, par_w * par_h * 3U, f_out); /* Note: fits in 32 bit unsigned int due to size limits */
- if ((par_w * par_h * 3U) != (auint)(s_tmp)){
-  fprintf(stderr, "Warning: output file didn't accept the whole image! (%u <=> %u size)\n", par_w * par_h * 3U, (auint)(s_tmp));
- }
+ uzebox_gen(img_wrk, par_w, par_h, &pal, par_f, par_h, f_out);
 
  free(img_buf);
 

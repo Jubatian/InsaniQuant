@@ -29,6 +29,7 @@ OBJECTS+=$(OBD)mquant.o
 OBJECTS+=$(OBD)palapp.o
 OBJECTS+=$(OBD)idata.o
 OBJECTS+=$(OBD)palgen.o
+OBJECTS+=$(OBD)uzebox.o
 
 
 all: $(OUT)
@@ -66,6 +67,9 @@ $(OBD)idata.o: idata.c *.h
 
 $(OBD)palgen.o: palgen.c *.h
 	$(CC) -c palgen.c -o $(OBD)palgen.o $(CFSIZ)
+
+$(OBD)uzebox.o: uzebox.c *.h
+	$(CC) -c uzebox.c -o $(OBD)uzebox.o $(CFSIZ)
 
 
 .PHONY: all clean
