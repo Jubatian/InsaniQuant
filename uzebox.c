@@ -4,7 +4,7 @@
 **  \author    Sandor Zsuga (Jubatian)
 **  \copyright 2013 - 2017, GNU General Public License version 2 or any later
 **             version, see LICENSE
-**  \date      2017.04.02
+**  \date      2017.04.03
 **
 **
 ** This program is free software: you can redistribute it and/or modify
@@ -150,6 +150,54 @@ static void uzebox_gen_0(uint8 const* buf, auint wd, auint hg, iquant_pal_t cons
 
 
 
+/* Format 1 output:
+** 8 colors, 2b width, 2b height, 8 palette bytes, image data
+** Image data comes in byte triplets: 60006111 62227333 74447555 */
+static void uzebox_gen_1(uint8 const* buf, auint wd, auint hg, iquant_pal_t const* pal, auint hex, FILE* f_out)
+{
+ auint i;
+ auint c0;
+ auint c1;
+ auint c2;
+ auint c3;
+ auint c4;
+ auint c5;
+ auint c6;
+ auint c7;
+
+ uzebox_gen_wh(wd, hg, hex, f_out);
+ uzebox_outnl(hex, f_out);
+ uzebox_gen_pal(pal, 8U, hex, f_out);
+ uzebox_outnl(hex, f_out);
+
+ for (i = 0U; i < (wd * hg); i += 8U){
+  c0 = uzebox_getcol(buf, i + 0U, pal);
+  c1 = uzebox_getcol(buf, i + 1U, pal);
+  c2 = uzebox_getcol(buf, i + 2U, pal);
+  c3 = uzebox_getcol(buf, i + 3U, pal);
+  c4 = uzebox_getcol(buf, i + 4U, pal);
+  c5 = uzebox_getcol(buf, i + 5U, pal);
+  c6 = uzebox_getcol(buf, i + 6U, pal);
+  c7 = uzebox_getcol(buf, i + 7U, pal);
+  if (c0 > 7U){ c0 = 7U; }
+  if (c1 > 7U){ c1 = 7U; }
+  if (c2 > 7U){ c2 = 7U; }
+  if (c3 > 7U){ c3 = 7U; }
+  if (c4 > 7U){ c4 = 7U; }
+  if (c5 > 7U){ c5 = 7U; }
+  if (c6 > 7U){ c6 = 7U; }
+  if (c7 > 7U){ c7 = 7U; }
+  uzebox_out( (((c6 >> 2) & 1U) << 7) + (c0 << 4) +
+              (((c6 >> 1) & 1U) << 3) + (c1     ), hex, f_out );
+  uzebox_out( (((c6     ) & 1U) << 7) + (c2 << 4) +
+              (((c7 >> 2) & 1U) << 3) + (c3     ), hex, f_out );
+  uzebox_out( (((c7 >> 1) & 1U) << 7) + (c4 << 4) +
+              (((c7     ) & 1U) << 3) + (c5     ), hex, f_out );
+ }
+}
+
+
+
 /* Outputs for Uzebox from buf (rgb image data), by the given format, into
 ** the passed file */
 void uzebox_gen(uint8 const* buf, auint wd, auint hg, iquant_pal_t const* pal, auint format, auint hex, FILE* f_out)
@@ -158,6 +206,7 @@ void uzebox_gen(uint8 const* buf, auint wd, auint hg, iquant_pal_t const* pal, a
 
  switch (format){
   case 0U: uzebox_gen_0(buf, wd, hg, pal, hex, f_out); break;
+  case 1U: uzebox_gen_1(buf, wd, hg, pal, hex, f_out); break;
   default: break;
  }
 }

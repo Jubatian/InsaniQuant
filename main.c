@@ -104,6 +104,7 @@ int main(int argc, char** argv)
   printf("- (Optional) Request text (hexa) output ('h'), defaults to binary\n\n");
   printf("The output formats:\n\n");
   printf("- 0: 16 color: 2 byte Width, 2 byte Height, 16 byte Palette, Data\n\n");
+  printf("- 1: 8 color: 2 byte Width, 2 byte Height, 8 byte Palette, Data (M748/5)\n\n");
   printf("In all formats, multi byte values are Little Endian,\n");
   printf("pixel order is high bits corresponding to left pixels.\n\n");
   exit(1);
@@ -142,6 +143,10 @@ int main(int argc, char** argv)
 
   case 0U: /* 16 color, 2b width, 2b height, palette, data */
    if (par_c > 16U){ par_c = 16U; }
+   break;
+
+  case 1U: /* 8 color, 2b width, 2b height, palette, data */
+   if (par_c >  8U){ par_c =  8U; }
    break;
 
   default: /* Unknown format */
