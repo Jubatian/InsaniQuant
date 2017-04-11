@@ -198,6 +198,55 @@ static void uzebox_gen_1(uint8 const* buf, auint wd, auint hg, iquant_pal_t cons
 
 
 
+/* Format 2 output:
+** 2 colors, 2b width, 2b height, 2 palette bytes, image data */
+static void uzebox_gen_2(uint8 const* buf, auint wd, auint hg, iquant_pal_t const* pal, auint hex, FILE* f_out)
+{
+ auint i;
+ auint c0;
+ auint c1;
+ auint c2;
+ auint c3;
+ auint c4;
+ auint c5;
+ auint c6;
+ auint c7;
+
+ uzebox_gen_wh(wd, hg, hex, f_out);
+ uzebox_outnl(hex, f_out);
+ uzebox_gen_pal(pal, 2U, hex, f_out);
+ uzebox_outnl(hex, f_out);
+
+ for (i = 0U; i < (wd * hg); i += 8U){
+  c0 = uzebox_getcol(buf, i + 0U, pal);
+  c1 = uzebox_getcol(buf, i + 1U, pal);
+  c2 = uzebox_getcol(buf, i + 2U, pal);
+  c3 = uzebox_getcol(buf, i + 3U, pal);
+  c4 = uzebox_getcol(buf, i + 4U, pal);
+  c5 = uzebox_getcol(buf, i + 5U, pal);
+  c6 = uzebox_getcol(buf, i + 6U, pal);
+  c7 = uzebox_getcol(buf, i + 7U, pal);
+  if (c0 > 1U){ c0 = 1U; }
+  if (c1 > 1U){ c1 = 1U; }
+  if (c2 > 1U){ c2 = 1U; }
+  if (c3 > 1U){ c3 = 1U; }
+  if (c4 > 1U){ c4 = 1U; }
+  if (c5 > 1U){ c5 = 1U; }
+  if (c6 > 1U){ c6 = 1U; }
+  if (c7 > 1U){ c7 = 1U; }
+  uzebox_out( ((c0 & 1U) << 7) +
+              ((c1 & 1U) << 6) +
+              ((c2 & 1U) << 5) +
+              ((c3 & 1U) << 4) +
+              ((c4 & 1U) << 3) +
+              ((c5 & 1U) << 2) +
+              ((c6 & 1U) << 1) +
+              ((c7 & 1U)     ), hex, f_out );
+ }
+}
+
+
+
 /* Outputs for Uzebox from buf (rgb image data), by the given format, into
 ** the passed file */
 void uzebox_gen(uint8 const* buf, auint wd, auint hg, iquant_pal_t const* pal, auint format, auint hex, FILE* f_out)
@@ -207,6 +256,7 @@ void uzebox_gen(uint8 const* buf, auint wd, auint hg, iquant_pal_t const* pal, a
  switch (format){
   case 0U: uzebox_gen_0(buf, wd, hg, pal, hex, f_out); break;
   case 1U: uzebox_gen_1(buf, wd, hg, pal, hex, f_out); break;
+  case 2U: uzebox_gen_2(buf, wd, hg, pal, hex, f_out); break;
   default: break;
  }
 }
