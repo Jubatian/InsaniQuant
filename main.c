@@ -2,9 +2,9 @@
 **  \file
 **  \brief     InsaniQuant main file
 **  \author    Sandor Zsuga (Jubatian)
-**  \copyright 2013 - 2017, GNU General Public License version 2 or any later
+**  \copyright 2013 - 2018, GNU General Public License version 2 or any later
 **             version, see LICENSE
-**  \date      2017.04.02
+**  \date      2018.04.01
 **
 **
 ** This program is free software: you can redistribute it and/or modify
@@ -220,7 +220,7 @@ int main(int argc, char** argv)
 
  /* Write back, clean up and exit */
 
- uzebox_gen(img_wrk, par_w, par_h, &pal, par_f, par_h, f_out);
+ uzebox_gen(img_wrk, par_w, par_h, &pal, par_f, par_x, f_out);
 
  free(img_buf);
 
